@@ -1,3 +1,7 @@
+
+
+
+
 /*
 
 
@@ -84,14 +88,15 @@ loop()
 #include <CapSense.h> // Library for capasitive touch sensors
 #include <Wire.h> // Library for i2c comunications. 
 #include <LedControl.h> // Library for the max7219's only supports 1 in chain.
+#include <DS1307.h>
+#include <stdio.h>
+
+
 #define DS1307 0x68 // Address of 1307
 
 // RTC I2C Slave Address
 // #define DS1307 0x68 >> 1
 // #define DS1307 0xD0 >> 1 // Origional line. 
-
-#include <DS1307.h>
-#include <stdio.h>
 
 //#include <binary.h>
 //#include <WProgram.h>
@@ -378,9 +383,6 @@ void loop() {
 		setBrightness();
 	}
 
-	
-		
-	
 	//if (debug = true){
 	//	Serial.print(millis() - start); // check on performance in milliseconds
 	//	Serial.print("\t");
@@ -392,9 +394,8 @@ void loop() {
 		// Serial.println(); 
 		// Serial.print("brightness ");
 		// Serial.print(brightness);
-		// Serial.println(); 
-		
-	}
+		// Serial.println(); 	
+        //}
 	
 	
 		// get the time
@@ -433,7 +434,6 @@ void loop() {
 			x = (x + 1); // x++ didn't seem to work
 			forceUpdate = true; // Mandatory clear and rewrite leds
 		}
-	
 		if (leftCorner == HIGH && previousLeft == LOW) {
 			// if (y = 8) {
 			// 			y = 0;
@@ -447,20 +447,18 @@ void loop() {
 	
 	if ( (x % 2) == 0) {
 		mode_default();
-		// Serial.println("Ahoy, looks like something is happening");
-		// 	Serial.print(x);
-		// 	Serial.println();
 	}
 	else { 
 		mode_seconds();
 	}
+
 	
 	if ( (y % 2) == 0) {
 		displayOn = true;
 		LC1.shutdown(0,false);
 		LC2.shutdown(0,false);
 	}
-	else{
+	else {
 		displayOn = false;
 		LC1.shutdown(0,true);
 		LC2.shutdown(0,true);
@@ -470,7 +468,7 @@ void loop() {
 	previousLeft = leftCorner;
 
 		// get wwvb time every 2 hours
-			getWWVBTime();
+			//getWWVBTime();
 }
 
 // end loop() ------------------end loop() ------------------end loop()-------------------
@@ -502,7 +500,7 @@ void updateDisplay() {
   // Update the first row
  // lcd.setCursor(0,0);
   char *time = buildTimeString();
-  Serial.println(time);
+ // Serial.println(time);
 
   // Update the second row
   // Cycle through our list of status messages
@@ -1306,7 +1304,6 @@ void R_CLEAR() {
   LC2.setRow(0,7,B00000000);
   
 }
-
 void M_FIVE() {
 	LC1.setRow(0,2,B00000011); // FI
 	LC1.setLed(0,5,3, true); // V
