@@ -61,7 +61,7 @@ setup()
 loop()
 
 	setBrightness()
-	updateDisplay()
+	updateDisplay() // Remains from origional code. Not needed unless using lcd panel
 	updateRTC()
 		WWVB functions
 		processBit()
@@ -92,11 +92,11 @@ loop()
 #include <stdio.h>
 
 
-#define DS1307 0x68 // Address of 1307
+//#define DS1307 0x68 //Spencers Address of 1307
 
 // RTC I2C Slave Address
-// #define DS1307 0x68 >> 1
-// #define DS1307 0xD0 >> 1 // Origional line. 
+ #define DS1307 0x68 >> 1
+// #define DS1307 0xD0 >> 1 // Vins Address. 
 
 //#include <binary.h>
 //#include <WProgram.h>
@@ -121,7 +121,8 @@ const int DINPIN2 = 7; 		// max7219 #2 Data In
 //CapSense cs_8_9 = CapSense(8,9);        // 10M resistor between pins 8 and 9
 //CapSense cs_10_11 = CapSense(10,11);        // 10M resistor between pins 10 and 11
 
-const int WWVBPIN = 9; //WWVB MODUAL INPUT
+const int WWVBPIN = 9; //WWVB MODUAL INPUT  
+// **** This must be pin 2 because, only pin 2 allows for interupts. 
 
 const int touchRight = 12;
 	int previousRight; // Declare reference variable
@@ -190,6 +191,7 @@ int eomYear[14][2] = {
 
 
 //______________________________ Global Variables _________________
+
 
 	// Convert normal decimal numbers to binary coded decimal - 1307
 		byte decToBcd(byte val) {
@@ -293,6 +295,10 @@ int eomYear[14][2] = {
 		unsigned long long lastFrameBuffer;
 
 
+
+
+
+
 	// Start setup()____________Start setup()_____________Start setup()___________
 	
 	void setup() {
@@ -361,7 +367,7 @@ int eomYear[14][2] = {
 	  year = 10;
 //	setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year); // Actually programs the 1307, run once then comment out. 
 
-
+      
 }
 	// End setup()________________End setup()___________________________End setup()_______
 
@@ -468,7 +474,12 @@ void loop() {
 	previousLeft = leftCorner;
 
 		// get wwvb time every 2 hours
-			//getWWVBTime();
+
+   //int sec = RTC.get(DS1307_SEC,false);
+    //Serial.println(h);
+    
+      getWWVBTime();
+    			
 }
 
 // end loop() ------------------end loop() ------------------end loop()-------------------
@@ -486,8 +497,8 @@ void setBrightness() {
 	LC2.setIntensity(0,brightness);
 }
 
-void updateDisplay() {
-
+void updateDisplay() { // not needed unless using lcd panel. Remenants from origional source
+	Serial.println("Just called updateDisplay()");
   // Turn off the front panel light marking a successfully 
   // received frame after 10 seconds of being on.
  // if (bcd2dec(second) >= 10) {    // Sync light
@@ -500,7 +511,7 @@ void updateDisplay() {
   // Update the first row
  // lcd.setCursor(0,0);
   char *time = buildTimeString();
- // Serial.println(time);
+  Serial.println(time);
 
   // Update the second row
   // Cycle through our list of status messages
@@ -579,13 +590,13 @@ void updateDisplay() {
     }
   }
   
-  Serial.print(msg);
+  Serial.println(msg);
 
 }
 
 
 void setRTC() {  //*********************************************** there is a problem here(((((((((((())))))))))))
-
+	Serial.println("Just called setRTC");
   // Begin the Transmission      
   Wire.beginTransmission(DS1307);
 
@@ -614,7 +625,7 @@ void setRTC() {  //*********************************************** there is a pr
  */
 
 void updateRTC() {
-
+	Serial.println("Just Called updateRTC() ");
   // Find out how long since the frame's On Time Marker (OTM)
   // We'll need this adjustment when we set the time.
   unsigned int timeSinceFrame = millis() - frameEndTime;
@@ -655,9 +666,9 @@ void updateRTC() {
   setRTC();
 	Serial.print("Spencer, you just updated your 1307 with WWVB");
 
-	
 
-  // Store the time of update for the display status line
+
+  // Store the time of update for the display status line   **** Only needed for LCD
   sprintf(lastTimeUpdate, "%0.2i:%0.2i %0.2i/%0.2i/%0.2i", 
           bcd2dec(hour), bcd2dec(minute), bcd2dec(month), 
           bcd2dec(date), bcd2dec(year));
@@ -1054,7 +1065,8 @@ char* buildTimeString() {
 // Start getWWVBTime() ------------------ Start getWWVBTime() ------------------ Start getWWVBTime()
 
 void getWWVBTime() {
-	// Serial.println("  spencer, you are checking wwvb");
+	
+        Serial.println("  spencer, you are checking wwvb"); // Vin's main loop
 	if (bitReceived == true) {
 	    processBit();
 	  }
@@ -1076,7 +1088,7 @@ void getWWVBTime() {
 	    }
 
 	    // Update the display
-	    updateDisplay();
+	    //updateDisplay(); From origional code, for LCD panel. Not needed
 
 	  }
 
