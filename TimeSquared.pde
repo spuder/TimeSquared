@@ -85,8 +85,8 @@ loop()
 
 
 	// Libraries, other instructions this program refers to
-#include <CapSense.h> // Library for capasitive touch sensors
-#include <Wire.h> // Library for i2c comunications. 
+#include <CapSense.h> // Library for capacitive touch sensors
+#include <Wire.h> // Library for i2c communications. 
 #include <LedControl.h> // Library for the max7219's only supports 1 in chain.
 #include <DS1307.h>
 #include <stdio.h>
@@ -101,12 +101,12 @@ loop()
 //#include <binary.h>
 //#include <WProgram.h>
 
-boolean debug = true; // true while debuging, set to false when program is 100%. (debug is slower)
+boolean debug = true; // true while debugging, set to false when program is 100%. (debug is slower)
 
 		// Tell the microcontroller what each of its pins are doing
 
   //7219 upper
-const int CLOCKPIN1 = 2; 	// max7219 #1 Clock 
+const int CLOCKPIN1 = 9; 	// max7219 #1 Clock   // Swapped pin 2 and pin 9 for the interrupt
 const int LOADPIN1 = 3; 	// max7219 #1 Load
 const int DINPIN1 = 4; 		// max7219 #1 Data In
 
@@ -121,8 +121,8 @@ const int DINPIN2 = 7; 		// max7219 #2 Data In
 //CapSense cs_8_9 = CapSense(8,9);        // 10M resistor between pins 8 and 9
 //CapSense cs_10_11 = CapSense(10,11);        // 10M resistor between pins 10 and 11
 
-const int WWVBPIN = 9; //WWVB MODUAL INPUT  
-// **** This must be pin 2 because, only pin 2 allows for interupts. 
+const int wwvbInPin = 2; //WWVB MODUAL INPUT   // Swapped pin 2 and 9 for the interrupt
+// **** This must be pin 2 because, only pin 2 allows for interrupts. 
 
 const int touchRight = 12;
 	int previousRight; // Declare reference variable
@@ -214,8 +214,8 @@ int eomYear[14][2] = {
 
 		int mode = 0; // var for touch counter
 
-		LedControl LC1=LedControl(CLOCKPIN1,LOADPIN1,DINPIN1,1); //clock[5], load[6], data[7]
-		LedControl LC2=LedControl(CLOCKPIN2,LOADPIN2,DINPIN2,1); //clock[2], load[3], data[4]
+		LedControl LC1=LedControl(CLOCKPIN1,LOADPIN1,DINPIN1,1); //clock 5, load 6, data 7
+		LedControl LC2=LedControl(CLOCKPIN2,LOADPIN2,DINPIN2,1); //clock 9, load 3, data 4
 
 		unsigned long delaytime=100; // Wait between updates of display
 
@@ -313,15 +313,15 @@ int eomYear[14][2] = {
 	pinMode (LOADPIN1, OUTPUT);
 	pinMode (DINPIN1, OUTPUT);
 
-	pinMode(WWVBPIN, INPUT);
-	pinMode(touchRight, INPUT);
+//	pinMode(wwvbInPin, INPUT);
+//	pinMode(touchRight, INPUT); This should be unnecessary because touchLeft pin mode is never declared, yet still works. 
 	
 	
 	displayOn = true;
 	
 		// Touch setup
-	previousRight = LOW; // Initialize refrence variable, 
-		x = 0; // Initialize refrence variable, 
+	previousRight = LOW; // Initialize reference variable, 
+		x = 0; // Initialize reference variable, 
 	previousLeft = LOW;
 		y = 0;
 
@@ -346,8 +346,8 @@ int eomYear[14][2] = {
 	
 	
 	 // Setup the WWVB Signal In Handling
-	  pinMode(WWVBPIN, INPUT);
-	  attachInterrupt(0, wwvbChange, CHANGE);
+	  pinMode(wwvbInPin, INPUT);
+	  attachInterrupt(0, wwvbChange, CHANGE); // Interrupt 0 = pin 2. Interrupt 1 = pin 3 (only pins 2 and 3 support interrupts on ardinos)
 
 	  // Setup the WWVB Buffer
 	  lastFrameBuffer = 0;
@@ -359,13 +359,13 @@ int eomYear[14][2] = {
 	
 	// Set Date
 	second = 40;
-	  minute = 00;
-	  hour = 0;
+	  minute = 49;
+	  hour = 16;
 	  dayOfWeek = 1;
-	  dayOfMonth = 22;
-	  month = 5;
+	  dayOfMonth = 17;
+	  month = 10;
 	  year = 10;
-//	setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year); // Actually programs the 1307, run once then comment out. 
+	setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year); // Actually programs the 1307, run once then comment out. ^^^^^^^^^^^^^^^^^^^^^^^^^
 
       
 }
@@ -382,7 +382,7 @@ void loop() {
 		// read light intensity 
 	if (displayOn = true) { 
 		photoSensValue = analogRead(photoSens); 
-		brightness = map(photoSensValue, 0, 1024, 8, 7); // Minimum 7, because leds are too dim
+		brightness = map(photoSensValue, 0, 1024, 8, 7); // Minimum 7, because leds are too dim - in other words, forces max brightness all the time. Next revision will use brighter leds
 	//	brightness = map(photoSensValue, 0, 1024, 8, 0); // Converts the 1023 analog values of sensor, to 8 brightness settings
 										// Intentionally put 1024 because sensor can not reach it, thus brightness never reach 0
 		// set brightness
@@ -403,27 +403,30 @@ void loop() {
 		// Serial.println(); 	
         //}
 	
-	
+	getRTC();
 		// get the time
-	  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+//	  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
 
-	//   getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
-	// if (debug = true) {
-	//   Serial.print(hour, DEC);
-	//   Serial.print(":");
-	//   Serial.print(minute, DEC);
-	//   Serial.print(":");
-	//   Serial.print(second, DEC);
-	//   Serial.print("  ");
-	//   Serial.print(month, DEC);
-	//   Serial.print("/");
-	//   Serial.print(dayOfMonth, DEC);
-	//   Serial.print("/");
-	//   Serial.print(year, DEC);
-	//   Serial.print("  Day_of_week:");
-	//   Serial.println(dayOfWeek, DEC);
-	// }
-	// 	delay(1000);
+         getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+//     
+
+//	 if (debug = true) {
+//	   Serial.print(":");
+//	   Serial.print(hour, DEC);
+//	   Serial.print(":");
+//	   Serial.print(minute, DEC);
+//	   Serial.print(":");
+//	   Serial.print(second, DEC);
+//	   Serial.print("  ");
+//	   Serial.print(month, DEC);
+//	   Serial.print("/");
+////	   Serial.print(dayOfMonth, DEC);
+//	   Serial.print("/");
+//	   Serial.print(year, DEC);
+////	   Serial.print("  Day_of_week:");
+////	   Serial.println(dayOfWeek, DEC);
+//	 }
+//		delay(1000);
 
 	
 
@@ -436,17 +439,17 @@ void loop() {
 			// if (x = 8) { // Periodically resets the counter so it doen't get too big
 			// 		x = 0;
 			// 	}
-		
 			x = (x + 1); // x++ didn't seem to work
 			forceUpdate = true; // Mandatory clear and rewrite leds
 		}
+
+
 		if (leftCorner == HIGH && previousLeft == LOW) {
 			// if (y = 8) {
 			// 			y = 0;
 			// 		}
 			y = (y + 1);
 			forceUpdate = true; // Mandatory clear and rewrite leds
-		
 		}
 	
 	
@@ -475,10 +478,10 @@ void loop() {
 
 		// get wwvb time every 2 hours
 
-   //int sec = RTC.get(DS1307_SEC,false);
-    //Serial.println(h);
+   //int sec = RTC.get(DS1307_SEC,true);
+   // Serial.println();
     
-      getWWVBTime();
+//      getWWVBTime();
     			
 }
 
@@ -497,102 +500,7 @@ void setBrightness() {
 	LC2.setIntensity(0,brightness);
 }
 
-void updateDisplay() { // not needed unless using lcd panel. Remenants from origional source
-	Serial.println("Just called updateDisplay()");
-  // Turn off the front panel light marking a successfully 
-  // received frame after 10 seconds of being on.
- // if (bcd2dec(second) >= 10) {    // Sync light
-   // digitalWrite(lightPin, LOW);
- // } 
 
-  // Update the LCD 
-  //lcd.clear();
-
-  // Update the first row
- // lcd.setCursor(0,0);
-  char *time = buildTimeString();
-  Serial.println(time);
-
-  // Update the second row
-  // Cycle through our list of status messages
- //lcd.setCursor(0,1);
-  int cycle = bcd2dec(second) / 10; // This gives us 6 slots for messages
-  char msg[17]; // 16 chars per line on display
-
-  switch (cycle) {
-
-    // Show the Date
-    case 0:
-    {
-      sprintf(msg, "%s %0.2i 20%0.2i", 
-              months[bcd2dec(month)-1], bcd2dec(date), bcd2dec(year));
-      break;
-    }
-
-    // Show the WWVB signal strength based on the # of recent frame errors
-    case 1:
-    {
-      int signal = (10 - sumFrameErrors()) / 2;
-      sprintf(msg, "WWVB Signal: %i", signal);
-      break;
-    }
-
-    // Show LeapYear and LeapSecond Warning bits
-    case 2:
-    {
-      const char *leapyear = ( ((byte) wwvbFrame->Leapyear) == 1)?"Yes":"No";
-      const char *leapsec  = ( ((byte) wwvbFrame->Leapsec) == 1)?"Yes":"No";
-      sprintf(msg, "LY: %s  LS: %s", leapyear, leapsec);
-      break;
-    }
-
-    // Show our Daylight Savings Time status
-    case 3: 
-    {  
-      switch((byte)wwvbFrame->Dst) {
-        case 0:
-	  sprintf(msg, "DST: No");
-          break;
-        case 1: 
-          sprintf(msg, "DST: Ending");
-          break;
-        case 2: 
-          sprintf(msg, "DST: Starting");
-          break;
-        case 3: 
-          sprintf(msg, "DST: Yes");
-          break;
-      }
-      break;
-    }
-
-    // Show the UT1 correction sign and amount
-    case 4:
-    {
-      char sign;
-      if ((byte)wwvbFrame->OffSign == 2) {
-	sign = '-';
-      } else if ((byte)wwvbFrame->OffSign == 5) {
-	sign = '+';
-      } else {
-	sign = '?';
-      } 
-      sprintf(msg, "UT1 %c 0.%i", sign, (byte) wwvbFrame->OffVal);
-      break;
-    }
-
-    // Show the time and date of the last successfully received 
-    // wwvb frame
-    case 5:
-    { 
-      sprintf(msg, "[%s]", lastTimeUpdate);
-      break; 
-    }
-  }
-  
-  Serial.println(msg);
-
-}
 
 
 void setRTC() {  //*********************************************** there is a problem here(((((((((((())))))))))))
@@ -669,12 +577,12 @@ void updateRTC() {
 
 
   // Store the time of update for the display status line   **** Only needed for LCD
-  sprintf(lastTimeUpdate, "%0.2i:%0.2i %0.2i/%0.2i/%0.2i", 
-          bcd2dec(hour), bcd2dec(minute), bcd2dec(month), 
-          bcd2dec(date), bcd2dec(year));
-
-	Serial.print("Atomic clock says ");
-	Serial.println( hour );
+  // sprintf(lastTimeUpdate, "%0.2i:%0.2i %0.2i/%0.2i/%0.2i", 
+  //           bcd2dec(hour), bcd2dec(minute), bcd2dec(month), 
+  //           bcd2dec(date), bcd2dec(year));
+  // 
+  // 	Serial.print("Atomic clock says ");
+  // 	Serial.println( hour );
 
 }
 
@@ -972,9 +880,10 @@ void incrementWwvbMinute() {
  */
 
 void wwvbChange() {
+  Serial.println("interputing cow.... moooo" );
 
-  int signalLevel = digitalRead(WWVBPIN);
-
+  int signalLevel = digitalRead(wwvbInPin);
+  Serial.println("you just called the wwvbChange method");
   // Determine if this was triggered by a rising or a falling edge
   // and record the pulse low period start and stop times
   if (signalLevel == LOW) {
@@ -1045,16 +954,16 @@ void getRTC() {
  *
  * Prepare the string for displaying the time on line 1 of the LCD
  */
-
-char* buildTimeString() {
-  char rv[255];
-  sprintf(rv,"%0.2i:%0.2i:%0.2i UTC   %c",
-        bcd2dec(hour),
-        bcd2dec(minute),
-        bcd2dec(second),
-        lastBit);
-  return rv;
-}
+// 
+// char* buildTimeString() {
+//   char rv[255];
+//   sprintf(rv,"%0.2i:%0.2i:%0.2i UTC   %c",
+//         bcd2dec(hour),
+//         bcd2dec(minute),
+//         bcd2dec(second),
+//         lastBit);
+//   return rv;
+// }
 
 
 
