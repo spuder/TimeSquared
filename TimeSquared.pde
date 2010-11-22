@@ -85,18 +85,28 @@ loop()
 
 
 	// Libraries, other instructions this program refers to
+#include <stdio.h>
 #include <CapSense.h> // Library for capacitive touch sensors
 #include <Wire.h> // Library for i2c communications. 
 #include <LedControl.h> // Library for the max7219's only supports 1 in chain.
 #include <DS1307.h>
-#include <stdio.h>
+
 
 
 //#define DS1307 0x68 //Spencers Address of 1307
 
 // RTC I2C Slave Address
- #define DS1307 0x68 >> 1
-// #define DS1307 0xD0 >> 1 // Vins Address. 
+ //#define DS1307 0x68 >> 1
+ 
+ #define DS1307_I2C_ADDRESS 0x68
+
+/*
+This is why the code wasn't working for the longest time. The 1307 was looking for "DS1307" while the atomic clock was looking for DS1307_I2C_ADDRESS
+
+
+*/
+
+ #define DS1307 0xD0 >> 1 // Vins Address. 
 
 //#include <binary.h>
 //#include <WProgram.h>
@@ -290,6 +300,7 @@ int eomYear[14][2] = {
 		  unsigned long long MinTen    :3;  // minutes tens
 		};
 
+
 		struct wwvbBuffer * wwvbFrame;
 		unsigned long long receiveBuffer;
 		unsigned long long lastFrameBuffer;
@@ -302,9 +313,23 @@ int eomYear[14][2] = {
 	// Start setup()____________Start setup()_____________Start setup()___________
 	
 	void setup() {
-	if (debug = true) {
-		Serial.begin(9600);
-	}
+	//1307
+	byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+	Wire.begin();
+        Serial.begin(9600);
+        debug = true;
+        
+        // Set Date
+	second = 30;
+	  minute = 20;
+	  hour = 17;
+	  dayOfWeek = 5;
+	  dayOfMonth = 18;
+	  month = 11;
+	  year = 10;
+	//setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year); // Actually programs the 1307, run once then comment out. ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+	
 
 	pinMode (CLOCKPIN2, OUTPUT);
 	pinMode (LOADPIN2, OUTPUT);
@@ -339,9 +364,7 @@ int eomYear[14][2] = {
 	LC1.clearDisplay(0);
 	LC2.clearDisplay(0);
 	
-	//1307
-	byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
-	Wire.begin();
+	
 	
 	
 	
@@ -357,16 +380,7 @@ int eomYear[14][2] = {
 	
 	
 	
-	// Set Date
-	second = 40;
-	  minute = 49;
-	  hour = 16;
-	  dayOfWeek = 1;
-	  dayOfMonth = 17;
-	  month = 10;
-	  year = 10;
-	setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year); // Actually programs the 1307, run once then comment out. ^^^^^^^^^^^^^^^^^^^^^^^^^
-
+	
       
 }
 	// End setup()________________End setup()___________________________End setup()_______
@@ -377,6 +391,42 @@ int eomYear[14][2] = {
 
 	// Start loop()_______________Start loop()__________________________loop()______
 void loop() {
+  
+  
+  
+  
+  
+  
+  //*********TEST - I moved vins main loop to its own method, I am moving it back to see if that fixes my problem
+     //Serial.println("  spencer, you are checking wwvb"); // Vin's main loop
+	if (bitReceived == true) {
+        Serial.println("I got a bit here!");
+	    processBit();
+	  }
+
+	  // Read from the RTC and update the display 4x per second
+	  if (millis() - lastRtcUpdateTime > 250) {
+
+	    // Snag the RTC time and store it locally
+	    getRTC();
+
+	    // And record the time of this last update.
+	    lastRtcUpdateTime = millis();
+
+	    // Update RTC if there has been a successfully received WWVB Frame
+	    if (frameEndTime != 0) {
+	      updateRTC();
+	      frameEndTime = 0;
+		Serial.println("Your doing it peter!");
+	    }
+
+	    // Update the display
+	    //updateDisplay(); From origional code, for LCD panel. Not needed
+
+	  }
+  
+  
+  //******END TEST
 
 
 		// read light intensity 
@@ -403,30 +453,13 @@ void loop() {
 		// Serial.println(); 	
         //}
 	
-	getRTC();
+//	getRTC();
 		// get the time
-//	  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+	  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
 
          getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
-//     
+     
 
-//	 if (debug = true) {
-//	   Serial.print(":");
-//	   Serial.print(hour, DEC);
-//	   Serial.print(":");
-//	   Serial.print(minute, DEC);
-//	   Serial.print(":");
-//	   Serial.print(second, DEC);
-//	   Serial.print("  ");
-//	   Serial.print(month, DEC);
-//	   Serial.print("/");
-////	   Serial.print(dayOfMonth, DEC);
-//	   Serial.print("/");
-//	   Serial.print(year, DEC);
-////	   Serial.print("  Day_of_week:");
-////	   Serial.println(dayOfWeek, DEC);
-//	 }
-//		delay(1000);
 
 	
 
@@ -506,7 +539,7 @@ void setBrightness() {
 void setRTC() {  //*********************************************** there is a problem here(((((((((((())))))))))))
 	Serial.println("Just called setRTC");
   // Begin the Transmission      
-  Wire.beginTransmission(DS1307);
+  Wire.beginTransmission(DS1307_I2C_ADDRESS);
 
   // Start at the beginning
   Wire.send(RTC_SECS);
@@ -594,6 +627,8 @@ void updateRTC() {
  * Decode a received pulse.  Pulses are decoded according to the 
  * length of time the pulse was in the low state.
  */
+
+
 
 void processBit() {
 
@@ -761,7 +796,7 @@ void debugPrintFrame() {
 
   sprintf(time, "\nFrame Decoded: %0.2i:%0.2i  %0.3i  20%0.2i\n", 
           wwvb_hour, wwvb_minute, wwvb_day, wwvb_year);
-  Serial.print(time);
+  Serial.println(time);
 
 }
 
@@ -930,14 +965,14 @@ int dec2bcd(int dec) {
 void getRTC() {
 
   // Begin the Transmission
-  Wire.beginTransmission(DS1307);
+  Wire.beginTransmission(DS1307_I2C_ADDRESS);
 
   // Point the request at the first register (seconds)
   Wire.send(RTC_SECS);
 
   // End the Transmission and Start Listening
   Wire.endTransmission();
-  Wire.requestFrom(DS1307, 8);
+  Wire.requestFrom(DS1307_I2C_ADDRESS, 8);
   second = Wire.receive();
   minute = Wire.receive();
   hour = Wire.receive();
@@ -972,11 +1007,12 @@ void getRTC() {
 
 
 // Start getWWVBTime() ------------------ Start getWWVBTime() ------------------ Start getWWVBTime()
-
+// Obsolete Function ********************
 void getWWVBTime() {
 	
-        Serial.println("  spencer, you are checking wwvb"); // Vin's main loop
+       // Serial.println("  spencer, you are checking wwvb"); // Vin's main loop
 	if (bitReceived == true) {
+          
 	    processBit();
 	  }
 
@@ -1153,7 +1189,7 @@ void setDateDs1307(byte second,        // 0-59
                    byte month,         // 1-12
                    byte year)          // 0-99
 {
-   Wire.beginTransmission(DS1307);
+   Wire.beginTransmission(DS1307_I2C_ADDRESS);
    Wire.send(0);
    Wire.send(decToBcd(second));    // 0 to bit 7 starts the clock
    Wire.send(decToBcd(minute));
@@ -1176,11 +1212,11 @@ void getDateDs1307 (byte *second,
           			byte *year) 
 {
   		// Reset the register pointer
-  	Wire.beginTransmission(DS1307);
+  	Wire.beginTransmission(DS1307_I2C_ADDRESS);
   	Wire.send(0);
   	Wire.endTransmission();
 
-  	Wire.requestFrom(DS1307, 7);
+  	Wire.requestFrom(DS1307_I2C_ADDRESS, 7);
 
   	// A few of these need masks because certain bits are control bits
   *second     = bcdToDec(Wire.receive() & 0x7f);
