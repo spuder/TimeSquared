@@ -1,7 +1,7 @@
 /*
 
-	| Time Squared |
-		A wall clock with no hands or numbers, only letters. Lights up the letters that spell out the time.
+   | Time Squared |
+	A wall clock with no hands or numbers, only letters. Lights up the letters that spell out the time.
 	
    | Examples | 
 	"IT IS TEN O'CLOCK" 
@@ -11,11 +11,12 @@
    | The circuit: |
 		This must be loaded onto an Atmgea 328. A 164 will be insuficient. 
 		
-	|Credits| 
+   |Credits| 
 		Marcus Liang - LED Schematics, 7219 interfacing
 		2010 Vin Marshall (vlm@2552.com, www.2552.com)
 		Maurice Ribble - 1307 code http://www.glacialwanderer.com/hobbyrobotics
 	
+
 	ATMEGA 328 PINOUT
 	*D2 - WWVB 
 	*D3 - 7219 #1 Load
@@ -39,7 +40,8 @@
 
 	Created 11 May 2010
 	By S. Owen
-	Modified day month year
+	
+        Credits given to source of forked code
 	
 	
 		
@@ -55,28 +57,40 @@
 
 //===============================Global Variables ==========|
 
-/*
-    index
 
-    -libraries
 
-    -global variables
+
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+//*********************************************************************************************************************
+
+//System wide debuging tools, turn to true to see a serial output of raw values in the serial console. Debuging slows system down, recomended turn off when finished. 
+
+  boolean debugSerial = false; //Loads serial library allowing output of data through the arduino serial/usb. Usefull but greatly slows down code. Must be true for others debugs to work. 
+    boolean debug1307 = false; //Outputs current time stored in 1307 to serial console                  - dependent on debugSerial being true
+    boolean debugTouch = false; //Numeric analog value for capacitance across touch sensors 0 to 1024   - dependent on debugSerial being true
+    boolean debugLed = false; //Light up every led to see if any are shorted / burnt out                - dependent on debugSerial being true
+ 
+ 
+  //Values to be programed into the real time clock (1307). Should only need to upload these values when time has drifted / daylight savings
+  //Atomic Clock (WWVB) in development - will render this code unnessisary when completed. 
+  //Uses military time
+  //sunday = 0 or 7
+    byte setup_second = 00, 
+	setup_minute = 29, 
+	setup_hour = 00, 
+	setup_dayOfWeek = 6, 
+	setup_dayOfMonth = 9, 
+	setup_month = 7, 
+	setup_year = 11;
     
-    -decTobec()
-    -becTodec()
-    
-    -setDateDs1307()
-    -getDateDs1307()
-   
-   
-   
-    -setup()
-    
-    -loop()
+  // Change this to true to reflash the 1307 chip with the correct time. Make sure you change this back to false before you upload anymore code. 
+  boolean reprogram1307 = false; 
+
+  
+//********************************************************************************************************************  
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
 
-
-*/
 
 
 
@@ -92,11 +106,6 @@
 
 
 
-
-boolean debug = false; //Turn this false when program is complete
-boolean debug1307 = false; //Turn this false when program is complete
-boolean debugTouch = false; //Turn this false when program is complete
-boolean debugLed = false; //Turn this false when program is complete
 
 
 
@@ -321,6 +330,7 @@ byte bcdToDec(byte val)
 {
   return ( (val/16*10) + (val%16) );
 }
+//=======================================================================|
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^end global variables^^^^^^^^^^^^^^^^^^^^^^^|
 
 
@@ -344,19 +354,32 @@ byte bcdToDec(byte val)
 
 //========================== SETUP ===============================================|
 
+
 void setup(){
-    byte setup_second, 
-	setup_minute, 
-	setup_hour, 
-	setup_dayOfWeek, 
-	setup_dayOfMonth, 
-	setup_month, 
-	setup_year;
+
+  
+  if (reprogram1307 == true)
+  {
+  setDateDs1307(setup_second, 
+                setup_minute, 
+                setup_hour, 
+                setup_dayOfWeek, 
+                setup_dayOfMonth, 
+                setup_month, 
+                setup_year); // Actually programs the 1307, run once then comment out. 
+  }
+
+  
 
 
-Wire.begin();
-Serial.begin(9600);
 
+
+  Wire.begin();
+  
+  if (debugSerial == true)
+  {
+    Serial.begin(9600);
+  }
 
 
 	pinMode (CLOCKPIN2, OUTPUT);
@@ -418,23 +441,10 @@ Serial.begin(9600);
 
 */
 
-	// Set Date
-        //Local variables that can be set to reprogram the 1307. 
-	  setup_second = 00;
-	  setup_minute =29;
-	  setup_hour = 00;
-	  setup_dayOfWeek = 6;
-	  setup_dayOfMonth = 9;
-	  setup_month = 7;
-	  setup_year = 11;
-//	setDateDs1307(set_second, set_minute, set_hour, set_dayOfWeek, set_dayOfMonth, set_month, set_year); // Actually programs the 1307, run once then comment out. 
-
-
-
 
 
 }//end setup()
-
+//=============================================================================|
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ end setup ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^|
 
 
@@ -530,7 +540,7 @@ void loop(){
 	previousRight = rightCorner; // Remember what corner was doing last time we checked
 	previousLeft = leftCorner;
 }//end loop()
-
+//=========================================================================|
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ end loop ^^^^^^^^^^^^^^^^^^^^^^^^^^^|
 
 
@@ -622,7 +632,7 @@ void mode_default() {
   else if (tHour == 0) tHour = 12;	
 	
 	
-//****TODO - Add check to see if time has changed. If it hasn't do nothing, reduce flicker
+
 	
 //Only clear and rewite leds if time has changed.  
  if (cMin =!global_minute)
@@ -1064,7 +1074,7 @@ void P_CLEAR() {
 	LC2.setLed(0,5,7,false); // bottom right
 }
 
-
+//=============================================================|
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^ end led ^^^^^^^^^^^^^^^^^^^^^^^^^|
 
 
@@ -1073,7 +1083,7 @@ void P_CLEAR() {
 
 
 
-//=========================== LED DEBUG =========================|
+//========================== LED DEBUG =========================|
 
 //Turns on every single light to identify dead leds
 void mode_ledDebug() {
@@ -1094,5 +1104,5 @@ LC2.setRow(0,5,B11111111);
 LC2.setRow(0,6,B11111111);
 LC2.setRow(0,7,B11111111);
 }
-
+//==============================================================|
 //^^^^^^^^^^^^^^^^^^^^^^ end led debug ^^^^^^^^^^^^^^^^^^^^^^^^^|
