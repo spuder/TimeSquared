@@ -65,15 +65,9 @@
 
 //System wide debuging tools, turn to true to see a serial output of raw values in the serial console. Debuging slows system down, recomended turn off when finished. 
 
-<<<<<<< HEAD
-  boolean debugSerial = false; //Loads serial library allowing output of data through the arduino serial/usb. Usefull but greatly slows down code. Must be true for others debugs to work. 
-    boolean debug1307 = false; //Outputs current time stored in 1307 to serial console                  - dependent on debugSerial being true
-    boolean debugTouch = false; //Numeric analog value for capacitance across touch sensors 0 to 1024   - dependent on debugSerial being true
-=======
   boolean debugSerial = true; //Loads serial library allowing output of data through the arduino serial/usb. Usefull but greatly slows down code. Must be true for others debugs to work. 
     boolean debug1307 = false; //Outputs current time stored in 1307 to serial console                  - dependent on debugSerial being true
     boolean debugTouch = true; //Numeric analog value for capacitance across touch sensors 0 to 1024   - dependent on debugSerial being true
->>>>>>> parent of 572e782... Revert 13a7f52a1f33909e92b2fd21f2c41663a30547af^..HEAD
     boolean debugLed = false; //Light up every led to see if any are shorted / burnt out                - dependent on debugSerial being true
  
  
@@ -371,24 +365,6 @@ byte bcdToDec(byte val)
 
 
 void setup(){
-<<<<<<< HEAD
-=======
-
-  
-  if (reprogram1307 == true)
-  {
-  setDateDs1307(setup_second, 
-                setup_minute, 
-                setup_hour, 
-                setup_dayOfWeek, 
-                setup_dayOfMonth, 
-                setup_month, 
-                setup_year); // Actually programs the 1307, run once then comment out. 
-  }
-
-  
-
->>>>>>> parent of 572e782... Revert 13a7f52a1f33909e92b2fd21f2c41663a30547af^..HEAD
 
   
   if (reprogram1307 == true)
@@ -405,12 +381,6 @@ void setup(){
   
 
 
-  Wire.begin();
-  
-  if (debugSerial == true)
-  {
-    Serial.begin(9600);
-  }
 
 
   Wire.begin();
@@ -608,13 +578,10 @@ void loop(){
       }
 	previousRight = rightCorner; // Remember what corner was doing last time we checked
 	previousLeft = leftCorner;
-<<<<<<< HEAD
-=======
 
 
 
 
->>>>>>> parent of 572e782... Revert 13a7f52a1f33909e92b2fd21f2c41663a30547af^..HEAD
 }//end loop()
 //=========================================================================|
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ end loop ^^^^^^^^^^^^^^^^^^^^^^^^^^^|
