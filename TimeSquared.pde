@@ -1,7 +1,7 @@
 /*
 
-   | Time Squared |
-	A wall clock with no hands or numbers, only letters. Lights up the letters that spell out the time.
+	| Time Squared |
+		A wall clock with no hands or numbers, only letters. Lights up the letters that spell out the time.
 	
    | Examples | 
 	"IT IS TEN O'CLOCK" 
@@ -11,12 +11,11 @@
    | The circuit: |
 		This must be loaded onto an Atmgea 328. A 164 will be insuficient. 
 		
-   |Credits| 
+	|Credits| 
 		Marcus Liang - LED Schematics, 7219 interfacing
 		2010 Vin Marshall (vlm@2552.com, www.2552.com)
 		Maurice Ribble - 1307 code http://www.glacialwanderer.com/hobbyrobotics
 	
-
 	ATMEGA 328 PINOUT
 	*D2 - WWVB 
 	*D3 - 7219 #1 Load
@@ -40,8 +39,7 @@
 
 	Created 11 May 2010
 	By S. Owen
-	
-        Credits given to source of forked code
+	Modified day month year
 	
 	
 		
@@ -57,40 +55,28 @@
 
 //===============================Global Variables ==========|
 
+/*
+    index
 
+    -libraries
 
-
-//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-//*********************************************************************************************************************
-
-//System wide debuging tools, turn to true to see a serial output of raw values in the serial console. Debuging slows system down, recomended turn off when finished. 
-
-  boolean debugSerial = true; //Loads serial library allowing output of data through the arduino serial/usb. Usefull but greatly slows down code. Must be true for others debugs to work. 
-    boolean debug1307 = false; //Outputs current time stored in 1307 to serial console                  - dependent on debugSerial being true
-    boolean debugTouch = true; //Numeric analog value for capacitance across touch sensors 0 to 1024   - dependent on debugSerial being true
-    boolean debugLed = false; //Light up every led to see if any are shorted / burnt out                - dependent on debugSerial being true
- 
- 
-  //Values to be programed into the real time clock (1307). Should only need to upload these values when time has drifted / daylight savings
-  //Atomic Clock (WWVB) in development - will render this code unnessisary when completed. 
-  //Uses military time
-  //sunday = 0 or 7
-    byte setup_second = 00, 
-	setup_minute = 29, 
-	setup_hour = 00, 
-	setup_dayOfWeek = 6, 
-	setup_dayOfMonth = 9, 
-	setup_month = 7, 
-	setup_year = 11;
+    -global variables
     
-  // Change this to true to reflash the 1307 chip with the correct time. Make sure you change this back to false before you upload anymore code. 
-  boolean reprogram1307 = false; 
+    -decTobec()
+    -becTodec()
+    
+    -setDateDs1307()
+    -getDateDs1307()
+   
+   
+   
+    -setup()
+    
+    -loop()
 
-  
-//********************************************************************************************************************  
-//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
 
+*/
 
 
 
@@ -106,6 +92,11 @@
 
 
 
+
+boolean debug = true; //Turn this false when program is complete
+boolean debug1307 = true; //Turn this false when program is complete
+boolean debugTouch = false; //Turn this false when program is complete
+boolean debugLed = false; //Turn this false when program is complete
 
 
 
@@ -190,12 +181,6 @@ int photoSensValue; // Analog value of resistor
 	global_month, 
 	global_year;
 
-
-boolean setModeToDebug = false; //vairable if we need to get into debug mode (hold both touch sensors for time)
-
-
-
-
 //TOUCH---------------------------|
 const int touchRight = 12;
 	  int previousRight;
@@ -204,9 +189,6 @@ const int touchRight = 12;
 const int touchLeft = 11;
       int previousLeft;
       int y;
-      
-      
-
 //TOUCH---------------------------|
 
 
@@ -339,7 +321,6 @@ byte bcdToDec(byte val)
 {
   return ( (val/16*10) + (val%16) );
 }
-//=======================================================================|
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^end global variables^^^^^^^^^^^^^^^^^^^^^^^|
 
 
@@ -363,32 +344,19 @@ byte bcdToDec(byte val)
 
 //========================== SETUP ===============================================|
 
-
 void setup(){
-
-  
-  if (reprogram1307 == true)
-  {
-  setDateDs1307(setup_second, 
-                setup_minute, 
-                setup_hour, 
-                setup_dayOfWeek, 
-                setup_dayOfMonth, 
-                setup_month, 
-                setup_year); // Actually programs the 1307, run once then comment out. 
-  }
-
-  
+    byte setup_second, 
+	setup_minute, 
+	setup_hour, 
+	setup_dayOfWeek, 
+	setup_dayOfMonth, 
+	setup_month, 
+	setup_year;
 
 
+Wire.begin();
+Serial.begin(9600);
 
-
-  Wire.begin();
-  
-  if (debugSerial == true)
-  {
-    Serial.begin(9600);
-  }
 
 
 	pinMode (CLOCKPIN2, OUTPUT);
@@ -450,10 +418,23 @@ void setup(){
 
 */
 
+	// Set Date
+        //Local variables that can be set to reprogram the 1307. 
+	  setup_second = 00;
+	  setup_minute =20;
+	  setup_hour = 18;
+	  setup_dayOfWeek = 4;
+	  setup_dayOfMonth = 18;
+	  setup_month = 9;
+	  setup_year = 22;
+	//setDateDs1307(setup_second, setup_minute, setup_hour, setup_dayOfWeek, setup_dayOfMonth, setup_month, setup_year); // Actually programs the 1307, run once then comment out. 
+
+
+
 
 
 }//end setup()
-//=============================================================================|
+
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ end setup ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^|
 
 
@@ -470,38 +451,50 @@ void setup(){
 
 
 void loop(){
-  
-  int z; //variable to see if both corners are held down. Given least nessisary scope
 
   byte loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year;
 
   //Retrieves time from 1307 every cycle 
   getDateDs1307(loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year);
 
-/*
-  if(debug1307 == true)
-      {
-        RTCDebugMethod();
-      }
+
+  if(debug1307 == true){
+           Serial.print(global_hour, DEC);
+	   Serial.print(":");
+	   Serial.print(global_minute, DEC);
+	   Serial.print(":");
+	   Serial.print(global_second, DEC);
+	   Serial.print("  ");
+	   Serial.print(global_month, DEC);
+	   Serial.print("/");
+	   Serial.print(global_dayOfMonth, DEC);
+	   Serial.print("/");
+	   Serial.print(global_year, DEC);
+	   Serial.print("  Day_of_week:");
+	   Serial.println(loop_dayOfWeek, DEC);
+	
+	delay(1000);
+	}
 	
   if(debugLed == true)
     {
      mode_ledDebug(); 
     }
-    
- */
 
   // Check Corners
 	int rightCorner = digitalRead(touchRight);
 	int leftCorner = digitalRead(touchLeft);
 
-	/*
+	
   if (debugTouch == true)
     {
-      touchDebugMethod();
+   // Serial.print(leftCorner);
+    Serial.println("right: " + rightCorner);//doesn't work as expected
+    Serial.println("left: " + leftCorner); // doesn't work as expected 
+    Serial.println();
     }	
     
-    */
+    
 
 
   if (rightCorner == HIGH && previousRight == LOW) 
@@ -512,78 +505,32 @@ void loop(){
 	
   if (leftCorner == HIGH && previousLeft == LOW) 
     {
-	y = (y + 1); // y++ doesn't seem to work for some unknown reason
+	y = (y + 1);
 	forceUpdate = true; // Mandatory clear and rewrite leds
     }
-   
-   
-  
-   if (rightCorner == HIGH && leftCorner == HIGH) // if you are touching both corners at the same time
-   {
-      z = (z + 1); // z++ doesn't seem to work for unknown reason
-      
-      if (setModeToDebug == true) //
-      {
-        setModeToDebug = false;
-      }
-      
-      if (z = 100) // must hold both sensors for 100 cycles. 
-      {
-        setModeToDebug = true;
-      }
-   }
-   else if (z > 0 && setModeToDebug == false) // if you have let go of the sensors recently, starting 'calming down'
-   {
-     z = (z - 4); // counts down by 4 to skip trigger number
-     if (z <= 0)
-       {
-         setModeToDebug = false;
-         z = 0;// in case our count down over shot 0.
-       }
-   }
-   //else{}//do nothing
 	
-
 	
-  if ( setModeToDebug == true )
-    {
-      mode_debug();
-    }
-  else if ( (x % 2) == 0)
-    {
-       //boolean debugSerial = false; // if entered debug mode, must undo changes it made to boolean variables. 
-      // boolean touchDebug = false;
-      mode_default();
-      
-    }
-  else 
-    {
-      mode_seconds();
-    }
-   
+	
+   if ( (x % 2) == 0) {mode_default();}
+   else {mode_seconds();}
 
 
 	
-    if ( (y % 2) == 0) 
-      {
-        displayOn = true;
-        LC1.shutdown(0,false);
-	LC2.shutdown(0,false);
-      }
-    else 
-      {
-        displayOn = false;
-        LC1.shutdown(0,true);
-        LC2.shutdown(0,true);
-      }
+	if ( (y % 2) == 0) {
+		displayOn = true;
+		LC1.shutdown(0,false);
+		LC2.shutdown(0,false);
+	}
+	else {
+		displayOn = false;
+		LC1.shutdown(0,true);
+		LC2.shutdown(0,true);
+	}
+
 	previousRight = rightCorner; // Remember what corner was doing last time we checked
 	previousLeft = leftCorner;
-
-
-
-
 }//end loop()
-//=========================================================================|
+
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ end loop ^^^^^^^^^^^^^^^^^^^^^^^^^^^|
 
 
@@ -622,6 +569,9 @@ void getDateDs1307(
   global_dayOfMonth = bcdToDec(Wire.receive());
   global_month      = bcdToDec(Wire.receive());
   global_year       = bcdToDec(Wire.receive());
+  
+  
+  
 }
 
 
@@ -675,7 +625,7 @@ void mode_default() {
   else if (tHour == 0) tHour = 12;	
 	
 	
-
+//****TODO - Add check to see if time has changed. If it hasn't do nothing, reduce flicker
 	
 //Only clear and rewite leds if time has changed.  
  if (cMin =!global_minute)
@@ -1117,7 +1067,7 @@ void P_CLEAR() {
 	LC2.setLed(0,5,7,false); // bottom right
 }
 
-//=============================================================|
+
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^ end led ^^^^^^^^^^^^^^^^^^^^^^^^^|
 
 
@@ -1126,11 +1076,10 @@ void P_CLEAR() {
 
 
 
-//========================== LED DEBUG =========================|
+//=========================== LED DEBUG =========================|
 
 //Turns on every single light to identify dead leds
-void mode_ledDebug() 
-{
+void mode_ledDebug() {
 LC1.setRow(0,0,B11111111);
 LC1.setRow(0,1,B11111111);
 LC1.setRow(0,2,B11111111);
@@ -1148,79 +1097,5 @@ LC2.setRow(0,5,B11111111);
 LC2.setRow(0,6,B11111111);
 LC2.setRow(0,7,B11111111);
 }
-//==============================================================|
+
 //^^^^^^^^^^^^^^^^^^^^^^ end led debug ^^^^^^^^^^^^^^^^^^^^^^^^^|
-
-
-
-void mode_debug() 
-{
-  boolean debugSerial = true;
-  boolean touchDebug = true;
-  
-  touchDebugMethod();
-  RTCDebugMethod();
-  
- // mode_default();
-  
-    LC1.setLed(0,5,0,false); // top left
-    LC1.setLed(0,5,7,false); // top right
-    LC2.setLed(0,5,0,false); // top left	
-    LC2.setLed(0,5,7,false); // bottom right
-    
-    delay(500);
-     LC1.setLed(0,5,0,true); // top left
-     LC1.setLed(0,5,7,true); // top right
-     LC2.setLed(0,5,0,true); // top left	
-     LC2.setLed(0,5,7,true); // bottom right 
-    delay(500);
-}
-
-
-
-
-void RTCDebugMethod()
-{
-
- Serial.print(global_hour, DEC);
- 
-   byte loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year;
-
-  //Retrieves time from 1307 every cycle 
-  getDateDs1307(loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year);
-
-
-
-
-	   Serial.print(":");
-	   Serial.print(global_minute, DEC);
-	   Serial.print(":");
-	   Serial.print(global_second, DEC);
-	   Serial.print("  ");
-	   Serial.print(global_month, DEC);
-	   Serial.print("/");
-	   Serial.print(global_dayOfMonth, DEC);
-	   Serial.print("/");
-	   Serial.print(global_year, DEC);
-	   Serial.print("  Day_of_week:");
-	   Serial.println(loop_dayOfWeek, DEC);
-	
-	delay(1000);
-
-}
-
-void touchDebugMethod()
-{
-  
-  int rightCorner = analogRead(touchRight);
-	int leftCorner = analogRead(touchLeft);
-
-   Serial.print(leftCorner + "\t" + rightCorner);
-   //Serial.println(rightCorner);
-   // Serial.println();
-   // Serial.println();
-   // Serial.println("right: " + rightCorner);//doesn't work as expected
-   // Serial.println("left: " + leftCorner); // doesn't work as expected 
-   // Serial.println(); 
-}
-
