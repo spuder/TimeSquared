@@ -60,6 +60,20 @@
 
 
 
+//LIBRARIES--------------------------------------------------|
+//#include <CapSense.h> //Library for capasitive touch sensors
+#include <Wire.h> //Library for i2c, Used by 1307 and wwvb
+#include <LedControl.h> //Library for max7219. Daisy chain not currently supported
+//#include <stdio.h>
+//#include <binary.h> //not sure why
+//#include <WProgram.h>//not sure why
+//LIBRARIES---------------------------------------------------|
+
+
+
+
+
+
 //|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 //*********************************************************************************************************************
 
@@ -67,7 +81,7 @@
 
   boolean debugSerial = true; //Loads serial library allowing output of data through the arduino serial/usb. Usefull but greatly slows down code. Must be true for others debugs to work. 
     boolean debug1307 = false; //Outputs current time stored in 1307 to serial console                  - dependent on debugSerial being true
-    boolean debugTouch = true; //Numeric analog value for capacitance across touch sensors 0 to 1024   - dependent on debugSerial being true
+    boolean debugTouch = false; //Numeric analog value for capacitance across touch sensors 0 to 1024   - dependent on debugSerial being true
     boolean debugLed = false; //Light up every led to see if any are shorted / burnt out                - dependent on debugSerial being true
  
  
@@ -75,13 +89,13 @@
   //Atomic Clock (WWVB) in development - will render this code unnessisary when completed. 
   //Uses military time
   //sunday = 0 or 7
-    byte setup_second = 00, 
-	setup_minute = 29, 
-	setup_hour = 00, 
-	setup_dayOfWeek = 6, 
-	setup_dayOfMonth = 9, 
-	setup_month = 7, 
-	setup_year = 11;
+    byte setup_second = 00;
+	byte setup_minute = 35;
+	byte setup_hour = 00;
+	byte setup_dayOfWeek = 5;
+	byte setup_dayOfMonth = 22; 
+	byte setup_month = 9;
+	byte setup_year = 11;
     
   // Change this to true to reflash the 1307 chip with the correct time. Make sure you change this back to false before you upload anymore code. 
   boolean reprogram1307 = false; 
@@ -93,15 +107,6 @@
 
 
 
-
-//LIBRARIES--------------------------------------------------|
-//#include <CapSense.h> //Library for capasitive touch sensors
-#include <Wire.h> //Library for i2c, Used by 1307 and wwvb
-#include <LedControl.h> //Library for max7219. Daisy chain not currently supported
-//#include <stdio.h>
-//#include <binary.h> //not sure why
-//#include <WProgram.h>//not sure why
-//LIBRARIES---------------------------------------------------|
 
 
 
@@ -131,11 +136,10 @@ LedControl LC2=LedControl(CLOCKPIN2,LOADPIN2,DINPIN2,1); //clock[9], load[3], da
 
 boolean displayOn;
 boolean forceUpdate;
-
+int previousTemporary5MinBlock;
+int clockCycleCounterVar = 0;
 
 //7219 LED DRIVERS ----------------------------------------|
-
-
 
 
 
@@ -162,6 +166,8 @@ boolean forceUpdate;
 //		int cHour, cMin, cSec;
 // Global vars for tracking; 1307
 		unsigned long ledLastUpdate = 0; 
+
+
 		
 */
 
@@ -182,13 +188,23 @@ int photoSensValue; // Analog value of resistor
   //The time is periodically pulled from the 1307 and saved as these variables. 
   //Their scope allows any function to access the current time without having to go 
   //directly to the 1307 itself, since that is slower.
-  byte  global_second, 
-	global_minute, 
-	global_hour, 
-	global_dayOfWeek, 
-	global_dayOfMonth, 
-	global_month, 
-	global_year;
+  	int global_second;
+	int global_minute; 
+	int global_hour;
+	int global_dayOfWeek; 
+	int global_dayOfMonth; 
+	int global_month;
+	int global_year;
+	//these were all bytes for some reason. I changed to ints to allow for more than 255 
+	
+	//used to compare whether the time has changed, saves a lot of unessisary calculations. 
+	int previous_global_second;
+	int previous_global_minute; 
+	int previous_global_hour;
+	int previous_global_dayOfWeek; 
+	int previous_global_dayOfMonth; 
+	int previous_global_month;
+	int previous_global_year;
 
 
 boolean setModeToDebug = false; //vairable if we need to get into debug mode (hold both touch sensors for time)
@@ -210,124 +226,7 @@ const int touchLeft = 11;
 //TOUCH---------------------------|
 
 
-/*
 
-
-		// Timing and error recording 
-		unsigned long pulseStartTime = 0;
-		unsigned long pulseEndTime = 0;
-		unsigned long frameEndTime = 0;
-		unsigned long lastRtcUpdateTime = 0;
-		boolean bitReceived = false;
-		boolean wasMark = false;
-		int framePosition = 0;
-		int bitPosition = 1;
-		char lastTimeUpdate[17];
-		char lastBit = ' ';
-		int errors[10] = { 1,1,1,1,1,1,1,1,1,1 };
-		int errIdx = 0;
-		int bitError = 0;
-		boolean frameError = false;
-
-		// RTC clock variables
-		byte second = 0x00; //renamed this to RTCsecond because 'second' conflicts with a variable that wwvb uses
-		byte minute = 0x00;
-		byte hour = 0x00;
-		byte day = 0x00;
-		byte date = 0x01;
-		byte month = 0x01;
-		byte year = 0x00;
-		byte ctrl = 0x00;
-		// WWVB time variables
-		byte wwvb_hour = 0;
-		byte wwvb_minute = 0;
-		byte wwvb_day = 0;
-		byte wwvb_year = 0;
-
-*/
-		/* WWVB time format struct - acts as an overlay on wwvbRxBuffer to extract time/date data.
-		 * This points to a 64 bit buffer wwvbRxBuffer that the bits get inserted into as the
-		 * incoming data stream is received.  (Thanks to Capt.Tagon @ duinolab.blogspot.com)
-		 */
-		 
-		 /*
-		struct wwvbBuffer {
-		  unsigned long long U12       :4;  // no value, empty four bits only 60 of 64 bits used
-		  unsigned long long Frame     :2;  // framing
-		  unsigned long long Dst       :2;  // dst flags
-		  unsigned long long Leapsec   :1;  // leapsecond
-		  unsigned long long Leapyear  :1;  // leapyear
-		  unsigned long long U11       :1;  // no value
-		  unsigned long long YearOne   :4;  // year (5 -> 2005)
-		  unsigned long long U10       :1;  // no value
-		  unsigned long long YearTen   :4;  // year (5 -> 2005)
-		  unsigned long long U09       :1;  // no value
-		  unsigned long long OffVal    :4;  // offset value
-		  unsigned long long U08       :1;  // no value
-		  unsigned long long OffSign   :3;  // offset sign
-		  unsigned long long U07       :2;  // no value
-		  unsigned long long DayOne    :4;  // day ones
-		  unsigned long long U06       :1;  // no value
-		  unsigned long long DayTen    :4;  // day tens
-		  unsigned long long U05       :1;  // no value
-		  unsigned long long DayHun    :2;  // day hundreds
-		  unsigned long long U04       :3;  // no value
-		  unsigned long long HourOne   :4;  // hours ones
-		  unsigned long long U03       :1;  // no value
-		  unsigned long long HourTen   :2;  // hours tens
-		  unsigned long long U02       :3;  // no value
-		  unsigned long long MinOne    :4;  // minutes ones
-		  unsigned long long U01       :1;  // no value
-		  unsigned long long MinTen    :3;  // minutes tens
-		};
-
-		struct wwvbBuffer * wwvbFrame;
-		unsigned long long receiveBuffer;
-		unsigned long long lastFrameBuffer;
-		
-		*/
-
-
-/*
-
-// Month abbreviations
-char *months[12] = { //does this conflict with the 1307?
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr", 
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec" 
-};
-*/
-
-/*
-// Day of Year to month translation (thanks to Capt.Tagon)
-// End of Month - to calculate Month and Day from Day of Year 
-int eomYear[14][2] = {
-  {0,0},      // Begin
-  {31,31},    // Jan
-  {59,60},    // Feb
-  {90,91},    // Mar
-  {120,121},  // Apr
-  {151,152},  // May
-  {181,182},  // Jun
-  {212,213},  // Jul
-  {243,244},  // Aug
-  {273,274},  // Sep
-  {304,305},  // Oct
-  {334,335},  // Nov
-  {365,366},  // Dec
-  {366,367}   // overflow
-};
-
-*/
 	// Convert normal decimal numbers to binary coded decimal - 1307
 byte decToBcd(byte val)
 {
@@ -364,10 +263,17 @@ byte bcdToDec(byte val)
 //========================== SETUP ===============================================|
 
 
-void setup(){
+void setup()
+{  
+Wire.begin();
+ 
+ if (debugSerial == true)
+  {
+    Serial.begin(9600);
+  }
 
-  
-  if (reprogram1307 == true)
+
+if (reprogram1307 == true)
   {
   setDateDs1307(setup_second, 
                 setup_minute, 
@@ -375,19 +281,7 @@ void setup(){
                 setup_dayOfWeek, 
                 setup_dayOfMonth, 
                 setup_month, 
-                setup_year); // Actually programs the 1307, run once then comment out. 
-  }
-
-  
-
-
-
-
-  Wire.begin();
-  
-  if (debugSerial == true)
-  {
-    Serial.begin(9600);
+                setup_year); 
   }
 
 
@@ -475,21 +369,33 @@ void loop(){
 
   byte loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year;
 
-  //Retrieves time from 1307 every cycle 
-  getDateDs1307(loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year);
+  
+  clockCycleCounterVar = clockCycleCounterVar + 1; //var++ seems unreliable
+  
+  if (clockCycleCounterVar >= 1000)
+  {
+  	clockCycleCounterVar = 0;
+  
+  //Retrieves time from 1307 every 8th cycle, interupt would be more elegant, but this is simpler.
+  //To check the time against the 1307 clock more frequently, change 8 to a lower number
+  //note that accessing data over the i2c bus is relativly slow. 
+  
+	getDateDs1307(loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year);
 
-/*
+  }
+
+
   if(debug1307 == true)
-      {
-        RTCDebugMethod();
-      }
+    {
+    	RTCDebugMethod();
+    }
 	
   if(debugLed == true)
     {
-     mode_ledDebug(); 
+    	mode_ledDebug(); 
     }
     
- */
+ 
 
   // Check Corners
 	int rightCorner = digitalRead(touchRight);
@@ -522,8 +428,8 @@ void loop(){
    {
       z = (z + 1); // z++ doesn't seem to work for unknown reason
       
-      if (setModeToDebug == true) //
-      {
+      if (setModeToDebug == true) 
+      { 							
         setModeToDebug = false;
       }
       
@@ -568,7 +474,7 @@ void loop(){
       {
         displayOn = true;
         LC1.shutdown(0,false);
-	LC2.shutdown(0,false);
+		LC2.shutdown(0,false);
       }
     else 
       {
@@ -608,45 +514,88 @@ void getDateDs1307(
           byte y
           ){
   // Reset the register pointer
+  //Serial.println('getting the time');
   Wire.beginTransmission(DS1307_I2C_ADDRESS);
   Wire.send(0);
   Wire.endTransmission();
 
   Wire.requestFrom(DS1307_I2C_ADDRESS, 7);
+  
+  int localTemp_second;
+  int localTemp_minute;
+  int localTemp_hour;
+  int localTemp_dayOfWeek;
+  int localTemp_dayOfMonth;
+  int localTemp_month;
+  int localTemp_year;
 
   // A few of these need masks because certain bits are control bits
-  global_second     = bcdToDec(Wire.receive() & 0x7f);
-  global_minute     = bcdToDec(Wire.receive());
-  global_hour       = bcdToDec(Wire.receive() & 0x3f);  // Need to change this if 12 hour am/pm
-  global_dayOfWeek  = bcdToDec(Wire.receive());
-  global_dayOfMonth = bcdToDec(Wire.receive());
-  global_month      = bcdToDec(Wire.receive());
-  global_year       = bcdToDec(Wire.receive());
+  localTemp_second     = bcdToDec(Wire.receive() & 0x7f);
+  localTemp_minute     = bcdToDec(Wire.receive());
+  localTemp_hour       = bcdToDec(Wire.receive() & 0x3f);  // Need to change this if 12 hour am/pm
+  localTemp_dayOfWeek  = bcdToDec(Wire.receive());
+  localTemp_dayOfMonth = bcdToDec(Wire.receive());
+  localTemp_month      = bcdToDec(Wire.receive());
+  localTemp_year       = bcdToDec(Wire.receive());
+  
+  
+  //global variable must be out of date, lets update it and shift the global values to previous values
+  if (localTemp_second !=global_second)
+  {
+  		//The time has changed, so shift all the current global variables' values to the previous variables'
+  	previous_global_second 		= global_second;
+  	previous_global_minute 		= global_minute;
+  	previous_global_hour 		= global_hour;
+  	previous_global_dayOfWeek 	= global_dayOfWeek;
+  	previous_global_dayOfMonth	= global_dayOfMonth;
+  	previous_global_month 		= global_month;
+  	previous_global_year 		= global_year;
+  	
+  	
+  		//update our global variables with the values we just got from the 1307
+  	global_second 			= localTemp_second;
+  	global_minute 			= localTemp_minute;
+  	global_hour 			= localTemp_hour;
+  	global_dayOfWeek 		= localTemp_dayOfWeek;
+  	global_dayOfMonth 		= localTemp_dayOfMonth;
+  	global_month 			= localTemp_month;
+  	global_year 			= localTemp_year;
+  	
+  
+  }
+  
+  
+  
+  
 }
+
+
+
+
 
 
 // 1) Sets the date and time on the ds1307
 // 2) Starts the clock
 // 3) Sets hour mode to 24 hour clock
 // Assumes you're passing in valid numbers
-void setDateDs1307(byte second,        // 0-59
-                   byte minute,        // 0-59
-                   byte hour,          // 1-23
-                   byte dayOfWeek,     // 1-7
-                   byte dayOfMonth,    // 1-28/29/30/31
-                   byte month,         // 1-12
-                   byte year)          // 0-99
+void setDateDs1307(byte setDateSecond,        // 0-59
+                   byte setDateMinute,        // 0-59
+                   byte setDateHour,          // 1-23
+                   byte setDateDayOfWeek,     // 1-7
+                   byte setDateDayOfMonth,    // 1-28/29/30/31
+                   byte setDateMonth,         // 1-12
+                   byte setDateYear)          // 0-99
 {
    Wire.beginTransmission(DS1307_I2C_ADDRESS);
    Wire.send(0);
-   Wire.send(decToBcd(second));    // 0 to bit 7 starts the clock
-   Wire.send(decToBcd(minute));
-   Wire.send(decToBcd(hour));      // If you want 12 hour am/pm you need to set
+   Wire.send(decToBcd(setDateSecond));    // 0 to bit 7 starts the clock
+   Wire.send(decToBcd(setDateMinute));
+   Wire.send(decToBcd(setDateHour));      // If you want 12 hour am/pm you need to set
                                    // bit 6 (also need to change readDateDs1307)
-   Wire.send(decToBcd(dayOfWeek));
-   Wire.send(decToBcd(dayOfMonth));
-   Wire.send(decToBcd(month));
-   Wire.send(decToBcd(year));
+   Wire.send(decToBcd(setDateDayOfWeek));
+   Wire.send(decToBcd(setDateDayOfMonth));
+   Wire.send(decToBcd(setDateMonth));
+   Wire.send(decToBcd(setDateYear));
    Wire.endTransmission();
 }
 
@@ -659,9 +608,9 @@ void setDateDs1307(byte second,        // 0-59
 
 
 // Start mode_default()=============== Start mode_default()================= Start mode_default()
-void mode_default() {
-	
-	
+void mode_default() 
+{
+
    int tpast5mins = global_minute % 5; // remainder
    int t5mins = global_minute - tpast5mins;
    int tHour = global_hour;
@@ -669,54 +618,96 @@ void mode_default() {
 	int cHour;
 	int cMin;
 	int cSec;
-
+	int temporary5MinBlock = 0;
+	
   //compensate for military time used by 1307
-  if (tHour > 12) tHour = tHour - 12;
+  // time can only be 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 or 11. No 0 or 13 hour
+  if (tHour > 12) 
+  {
+  tHour = tHour - 12;
+  }
   else if (tHour == 0) tHour = 12;	
 	
 	
 
 	
-//Only clear and rewite leds if time has changed.  
- if (cMin =!global_minute)
-   {
-     LED_CLEAR(); 
-   }
+//Only clear and rewite leds if time has changed. 
+	if (forceUpdate == true)
+   		{
+   			//if (global_minute != previous_global_minute)
+   			
+     		LED_CLEAR(); 
+     		
+     		forceUpdate = false; // reset the forceUpdate variable.
+     		//Serial.println("clearning the leds");
+    		/*
+     		Serial.print("global_minute  " );
+			Serial.print(global_minute);
+			Serial.print("\t previous_global_minute ");
+			Serial.println(previous_global_minute);	
+			*/
      
- 
+  		}
+/*
+	else 
+		{
+			Serial.println("seems like global_minute equals previous_global_minute");
+			Serial.print("global_minute  " );
+			Serial.print(global_minute);
+			Serial.print("\t previous_global_minute");
+			Serial.println(previous_global_minute);
+		}
+*/
+    
  
   W_ITIS();
 
-  if      (t5mins == 5 || t5mins == 55)     M_FIVE();       // 5 past or 5 to..
-  else if (t5mins == 10 || t5mins == 50)    M_TEN();        // 10 past or 10 to..
-  else if (t5mins == 15 || t5mins == 45)    M_AQUARTER();    // etc..
-  else if (t5mins == 20 || t5mins == 40)    M_TWENTY();
-  else if (t5mins == 25 || t5mins == 35)    M_TWENTYFIVE();
-  else if (t5mins == 30)                    M_HALF();
+  if      (t5mins == 5 || t5mins == 55)   { M_FIVE(); 		temporary5MinBlock = 5;  }    // 5 past or 5 to..
+  else if (t5mins == 10 || t5mins == 50)  { M_TEN();		temporary5MinBlock = 10; }   // 10 past or 10 to..
+  else if (t5mins == 15 || t5mins == 45)  { M_AQUARTER(); 	temporary5MinBlock = 15; } // etc..
+  else if (t5mins == 20 || t5mins == 40)  { M_TWENTY();		temporary5MinBlock = 20; }
+  else if (t5mins == 25 || t5mins == 35)  { M_TWENTYFIVE();	temporary5MinBlock = 25; }
+  else if (t5mins == 30)                  { M_HALF();		temporary5MinBlock = 30; }
 
+
+	if (previousTemporary5MinBlock != temporary5MinBlock)
+	{
+	 forceUpdate = true;
+	 previousTemporary5MinBlock = temporary5MinBlock; 
+	}
+	
+	
+	
+	
    // past or to or o'clock?
-   if (t5mins == 0)	    W_OCLOCK();
+   if (t5mins == 0)	    	W_OCLOCK();
    else if (t5mins > 30)    W_TO();
    else                     W_PAST();
    
-   if (t5mins > 30){
-	tHour = tHour+1;
-	if (tHour > 12) tHour = 1;
-   }
+   
+   if (t5mins > 30) 
+   {
+		tHour = tHour+1;
+		if (tHour > 12) 
+		{
+			tHour = 1;
+   		}
+   }	
 
    // light up the hour word
    if (tHour == 1) H_ONE(); 
-   else if (tHour == 2) H_TWO(); 
-   else if (tHour == 3) H_THREE(); 
-   else if (tHour == 4) H_FOUR();
-   else if (tHour == 5) H_FIVE(); 
-   else if (tHour == 6) H_SIX(); 
-   else if (tHour == 7) H_SEVEN(); 
-   else if (tHour == 8) H_EIGHT();
-   else if (tHour == 9) H_NINE(); 
-   else if (tHour == 10) H_TEN(); 
-   else if (tHour == 11) H_ELEVEN(); 
-   else if (tHour == 12) H_TWELVE();
+   if (tHour == 2) H_TWO(); 
+   if (tHour == 3) H_THREE(); 
+   if (tHour == 4) H_FOUR();
+   if (tHour == 5) H_FIVE(); 
+   if (tHour == 6) H_SIX(); 
+   if (tHour == 7) H_SEVEN(); 
+   if (tHour == 8) H_EIGHT();
+   if (tHour == 9) H_NINE(); 
+   if (tHour == 10) H_TEN(); 
+   if (tHour == 11) H_ELEVEN(); 
+   if (tHour == 12) H_TWELVE();
+   // reason not using if elses, is code runs faster with less flicker
    
    // light up aux minute LED
    // ugly but quicker 
@@ -730,7 +721,7 @@ void mode_default() {
    cHour = global_hour;
    cMin = global_minute;
    cSec = global_second;
-   forceUpdate = false;
+  
    
 
   
@@ -744,28 +735,93 @@ void mode_default() {
 		
 	// Description: The entire face will show the "seconds" 00 to 59
 void mode_seconds() {
-  
-	int cHour;
-	int cMin;
-	int cSec;
-	
 
-   // no seconds change, do nothing
-   if (global_second == cSec) return; //Eliminates ficker
+
+/*
+logic
+
+time hasn't changed, do nothing
+
+time has changed
+	1. time is  x9 about to go to x0 
+		erase just the right number, preventing flickering on non changeing digit
+		
+	2. time is about to roll over from x9 to x0
+		erase both the left digit and the right digit
+		
+
+*/
+	// note the first time through loop, these variables will be blank, and nothing will happen
+	//the fact that we are running at thousands of loops per second, means its not a big deal, 
+	// no one will notice two cycles of nothing being written to led's
+
+
+   	// no seconds change, do nothing
+   	if (global_second == previous_global_second) return; //Eliminates ficker by skipping rest of code
    
- 
-   int tsec = global_second;
-  
+   //TODO, possible error where leaving seconds mode then returning there is a 1 in 10 chance of nothing running
+   //cause: previous_global_seconds persists even when method is inactive
+   
+   	// if second is now x0 and previous second was x9, update the left side once
+	if (global_second != previous_global_second)
+	{
+		if ( (global_second + 100 ) % 10) 
+		{ 
+			// if the time has no remainder, must be 00
+			LED_CLEAR();
+			
+			if 		(global_second < 10) L_ZERO();
+			else if (global_second < 20) L_ONE();
+			else if (global_second < 30) L_TWO();
+			else if (global_second < 40) L_THREE();
+			else if (global_second < 50) L_FOUR();
+			else 						 L_FIVE();	
+			
+			if (global_second == 0) R_ZERO();
+			else if (global_second == 01) R_ONE();
+			else if (global_second == 2) R_TWO();
+			else if (global_second == 3) R_THREE();
+			else if (global_second == 4) R_FOUR();
+			else if (global_second == 5) R_FIVE();
+			else if (global_second == 6) R_SIX();
+			else if (global_second == 7) R_SEVEN();
+			else if (global_second == 8) R_EIGHT();
+			else if (global_second == 9) R_NINE();
+		//	else (Serial.println('warning no seconds retrieved from 1307'));
+		
+		}
+		else 
+		{
+			R_CLEAR();
+			if (global_second == 0) R_ZERO();
+			else if (global_second == 01) R_ONE();
+			else if (global_second == 2) R_TWO();
+			else if (global_second == 3) R_THREE();
+			else if (global_second == 4) R_FOUR();
+			else if (global_second == 5) R_FIVE();
+			else if (global_second == 6) R_SIX();
+			else if (global_second == 7) R_SEVEN();
+			else if (global_second == 8) R_EIGHT();
+			else if (global_second == 9) R_NINE();
+		//	else (Serial.println('warning no seconds retrieved from 1307'));
+		}
+		
+	}
+	
+	
+	
+	/*
     
    // decide if we only want to draw the right number or both numbers.
    // reduce the apparentness of the flicker of the non changing digit.
-   if ((tsec - (tsec % 10) != cSec - (cSec % 10)) || (forceUpdate == true)) {
+   if ((global_second - (global_second % 10) != cSec - (cSec % 10)) || (forceUpdate == true)) 
+   {
      LED_CLEAR();   
-     if (tsec < 10) L_ZERO();
-     else if (tsec < 20)  L_ONE();
-     else if (tsec < 30)  L_TWO();
-     else if (tsec < 40)  L_THREE();
-     else if (tsec < 50)  L_FOUR();
+     if (global_second < 10) L_ZERO();
+     else if (global_second < 20)  L_ONE();
+     else if (global_second < 30)  L_TWO();
+     else if (global_second < 40)  L_THREE();
+     else if (global_second < 50)  L_FOUR();
      else L_FIVE();
    }
    else {
@@ -776,22 +832,28 @@ void mode_seconds() {
 	
 	tsec = tsec % 10;
 
-	if (tsec == 0) R_ZERO();
-	if (tsec == 1) R_ONE();
-	if (tsec == 2) R_TWO();
-	if (tsec == 3) R_THREE();
-	if (tsec == 4) R_FOUR();
-	if (tsec == 5) R_FIVE();
-	if (tsec == 6) R_SIX();
-	if (tsec == 7) R_SEVEN();
-	if (tsec == 8) R_EIGHT();
-	if (tsec == 9) R_NINE();
+
+ 
    
    // save last updated time
+   
+   
    cHour = global_hour;
    cMin = global_minute;
    cSec = global_second;   
-   forceUpdate = false;   
+   forceUpdate = false;  
+   */
+     
+        previous_global_second	        = global_second;
+	previous_global_minute 		= global_minute; 
+	previous_global_hour 		= global_hour;
+	previous_global_dayOfWeek 	= global_dayOfWeek; 
+	previous_global_dayOfMonth 	= global_dayOfMonth; 
+	previous_global_month 		= global_month;
+	previous_global_year 		= global_year;
+		//keep track of what the the time was the previous cycle. 
+     
+     
    
 }
 // End mode_seconds()------------------ End mode_seconds()--------------------- End mode_seconds()
@@ -809,6 +871,9 @@ void LED_CLEAR() {
   LC1.clearDisplay(0);
   LC2.clearDisplay(0);
 }
+
+
+
 void R_CLEAR() {
   LC1.setColumn(0,6,B00000000);
   LC1.setColumn(0,7,B00000000);
@@ -1191,7 +1256,7 @@ void RTCDebugMethod()
 
 
 
-
+	   Serial.print(global_hour, DEC);
 	   Serial.print(":");
 	   Serial.print(global_minute, DEC);
 	   Serial.print(":");
@@ -1204,6 +1269,7 @@ void RTCDebugMethod()
 	   Serial.print(global_year, DEC);
 	   Serial.print("  Day_of_week:");
 	   Serial.println(loop_dayOfWeek, DEC);
+	   Serial.println();
 	
 	delay(1000);
 
@@ -1212,7 +1278,7 @@ void RTCDebugMethod()
 void touchDebugMethod()
 {
   
-  int rightCorner = analogRead(touchRight);
+  	int rightCorner = analogRead(touchRight);
 	int leftCorner = analogRead(touchLeft);
 
    Serial.print(leftCorner + "\t" + rightCorner);
