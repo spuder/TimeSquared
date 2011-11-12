@@ -76,11 +76,11 @@
   //Uses military time
   //sunday = 0 or 7
     byte setup_second = 00, 
-	setup_minute = 29, 
-	setup_hour = 00, 
+	setup_minute = 07, 
+	setup_hour = 01, 
 	setup_dayOfWeek = 6, 
-	setup_dayOfMonth = 9, 
-	setup_month = 7, 
+	setup_dayOfMonth = 11, 
+	setup_month = 11, 
 	setup_year = 11;
     
   // Change this to true to reflash the 1307 chip with the correct time. Make sure you change this back to false before you upload anymore code. 
