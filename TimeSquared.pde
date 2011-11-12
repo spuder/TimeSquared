@@ -92,13 +92,13 @@
     byte setup_second = 00;
 	byte setup_minute = 35;
 	byte setup_hour = 00;
-	byte setup_dayOfWeek = 5;
-	byte setup_dayOfMonth = 22; 
-	byte setup_month = 9;
+	byte setup_dayOfWeek = 34;
+	byte setup_dayOfMonth = 11; 
+	byte setup_month = 11;
 	byte setup_year = 11;
     
   // Change this to true to reflash the 1307 chip with the correct time. Make sure you change this back to false before you upload anymore code. 
-  boolean reprogram1307 = false; 
+  boolean reprogram1307 = true; 
 
   
 //********************************************************************************************************************  
@@ -221,6 +221,8 @@ const int touchLeft = 11;
       int previousLeft;
       int y;
       
+      int xflashing;
+      int yflashing;
       
 
 //TOUCH---------------------------|
@@ -376,7 +378,7 @@ void loop(){
   {
   	clockCycleCounterVar = 0;
   
-  //Retrieves time from 1307 every 8th cycle, interupt would be more elegant, but this is simpler.
+  //Retrieves time from 1307 every 1000 cycles, interupt would be more elegant, but this is simpler.
   //To check the time against the 1307 clock more frequently, change 8 to a lower number
   //note that accessing data over the i2c bus is relativly slow. 
   
@@ -450,10 +452,29 @@ void loop(){
    //else{}//do nothing
 	
 
-	
-  if ( setModeToDebug == true )
+	//  you held down both buttons for so many seconds, lights are now blinking
+  if ( setModeToDebug == true ) 
     {
       mode_debug();
+      
+      //watch to see if we are trying to change the time
+      
+      
+      //test
+        if (rightCorner == HIGH && previousRight == LOW) 
+        {
+          xflashing = (xflashing + 1); // x++ didn't seem to work
+	 
+        }
+	
+
+        if (leftCorner == HIGH && previousLeft == LOW) 
+        {
+	  yflashing = (yflashing + 1); // y++ doesn't seem to work for some unknown reason
+	  
+        }
+   
+      
     }
   else if ( (x % 2) == 0)
     {
@@ -486,9 +507,36 @@ void loop(){
 	previousLeft = leftCorner;
 
 
+        if ( ( xflashing % 2) == 0)
+          {
+    
+           
+            // up to this point, we have entered debug mode, the leds are flashing and we just touched the left button once
+            byte change_hour = (global_hour + 1);
+            
+            
+           setDateDs1307( global_second,  global_minute, change_hour,  global_dayOfWeek,  global_dayOfMonth,  global_month,  global_year);         
+                             
+        
+          }
+          
+      else if ( ( yflashing % 2) == 0)
+          {
+    
+           
+            // up to this point, we have entered debug mode, the leds are flashing and we just touched the left button once
+            byte change_hour = (global_hour - 1);
+            
+            
+           setDateDs1307( global_second,  global_minute, change_hour,  global_dayOfWeek,  global_dayOfMonth,  global_month,  global_year);         
+                             
+        
+          }
+
 
 
 }//end loop()
+
 //=========================================================================|
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ end loop ^^^^^^^^^^^^^^^^^^^^^^^^^^^|
 
