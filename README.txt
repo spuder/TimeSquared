@@ -4,7 +4,7 @@ A word clock with no hands.
 
 Updated for Arduino IDE 1.0
 
-- Created By spider 
+- Created By spuder 
 - http://spuder.wordpress.com/2010/12/05/time-squared-word-clock/
 
 
