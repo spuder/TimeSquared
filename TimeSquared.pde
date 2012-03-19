@@ -76,12 +76,12 @@
   //Uses military time
   //sunday = 0 or 7
     byte setup_second = 00, 
-	setup_minute = 07, 
-	setup_hour = 01, 
-	setup_dayOfWeek = 6, 
-	setup_dayOfMonth = 11, 
-	setup_month = 11, 
-	setup_year = 11;
+	setup_minute = 20, 
+	setup_hour = 02, 
+	setup_dayOfWeek = 1, 
+	setup_dayOfMonth = 19, 
+	setup_month = 5, 
+	setup_year = 12;
     
   // Change this to true to reflash the 1307 chip with the correct time. Make sure you change this back to false before you upload anymore code. 
   boolean reprogram1307 = false; 
@@ -132,6 +132,11 @@ LedControl LC2=LedControl(CLOCKPIN2,LOADPIN2,DINPIN2,1); //clock[9], load[3], da
 boolean displayOn;
 boolean forceUpdate;
 
+const int hourIncreaseButton = 13;
+const int hourDecreaseButton = 10;
+
+int hourIncreaseButtonLastActivated = 0;
+int hourDecreaseButtonLastActivated = 0;
 
 //7219 LED DRIVERS ----------------------------------------|
 
@@ -388,6 +393,7 @@ void setup(){
   if (debugSerial == true)
   {
     Serial.begin(9600);
+    Serial.println("Began Serial at 9600");
   }
 
 
@@ -401,6 +407,10 @@ void setup(){
 	//pinMode(WWVBPIN, 	INPUT); commented until wwvb is ready
 	pinMode(touchRight, INPUT);
 	pinMode(touchLeft,  INPUT);
+
+        pinMode(hourIncreaseButton, INPUT);
+        pinMode(hourDecreaseButton, INPUT);
+        
 
 
 //Touch Sensors Initialize------------------------------|
@@ -473,10 +483,10 @@ void loop(){
   
   int z; //variable to see if both corners are held down. Given least nessisary scope
 
-  byte loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year;
+
 
   //Retrieves time from 1307 every cycle 
-  getDateDs1307(loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year);
+  getDateDs1307();
 
 /*
   if(debug1307 == true)
@@ -494,8 +504,92 @@ void loop(){
   // Check Corners
 	int rightCorner = digitalRead(touchRight);
 	int leftCorner = digitalRead(touchLeft);
+        
+        int hourIncreaseButtonValue = digitalRead(hourIncreaseButton);
+        int hourDecreaseButtonValue = digitalRead(hourDecreaseButton);
 
-	/*
+
+// Check the internal buttons to see if they have been pressed
+
+//If the button is pushed
+if (hourIncreaseButtonValue == HIGH)
+  {
+    //If it has been more than 50 milliseconds since the last time the button was pushed
+    if (millis() - hourIncreaseButtonLastActivated > 50)
+    {
+      
+
+
+      getDateDs1307();
+      Serial.println("Hour increase button pressed");
+      Serial.print(global_hour, DEC );
+      Serial.print(":");
+      Serial.print(global_minute, DEC);
+      Serial.print(":");
+      Serial.print(global_second, DEC);
+      
+      global_hour = global_hour + 1;
+      
+       setDateDs1307(global_second, 
+                global_minute, 
+                global_hour, 
+                global_dayOfWeek, 
+                global_dayOfMonth, 
+                global_month, 
+                global_year);   
+       
+  LED_CLEAR();
+      
+    }
+    //Reset the last time the button was pushed to the current time
+    hourIncreaseButtonLastActivated = millis();
+    
+  }
+
+
+
+//If the button is pushed
+if (hourDecreaseButtonValue == HIGH)
+  {
+    //If it has been more than 50 milliseconds since the last time the button was pushed
+    if (millis() - hourDecreaseButtonLastActivated > 50)
+    {
+       getDateDs1307();
+      Serial.println("Hour increase button pressed");
+      Serial.print(global_hour, DEC );
+      Serial.print(":");
+      Serial.print(global_minute, DEC);
+      Serial.print(":");
+      Serial.print(global_second, DEC);
+      
+      global_hour = global_hour - 1;
+      
+       setDateDs1307(global_second, 
+                global_minute, 
+                global_hour, 
+                global_dayOfWeek, 
+                global_dayOfMonth, 
+                global_month, 
+                global_year); 
+            
+            LED_CLEAR();  
+            
+      Serial.print("Time Changed to : ");
+      Serial.print(global_hour, DEC );
+      Serial.print(":");
+      Serial.print(global_minute, DEC);
+      Serial.print(":");
+      Serial.print(global_second, DEC);
+    }
+    //Reset the last time the button was pushed to the current time
+    hourDecreaseButtonLastActivated = millis();
+   
+  }
+  
+  
+  
+  	
+/*
   if (debugTouch == true)
     {
       touchDebugMethod();
@@ -598,15 +692,7 @@ void loop(){
  * Data is stored in the uC's global clock variables.
  */
 // Gets the date and time from the ds1307
-void getDateDs1307(
-          byte s,
-          byte mi,
-          byte h,
-          byte dow,
-          byte dom,
-          byte mo,
-          byte y
-          ){
+void getDateDs1307(){
   // Reset the register pointer
   Wire.beginTransmission(DS1307_I2C_ADDRESS);
   Wire.send(0);
@@ -791,7 +877,7 @@ void mode_seconds() {
    cHour = global_hour;
    cMin = global_minute;
    cSec = global_second;   
-   forceUpdate = false;   
+  // forceUpdate = false;   
    
 }
 // End mode_seconds()------------------ End mode_seconds()--------------------- End mode_seconds()
@@ -1182,13 +1268,10 @@ void mode_debug()
 void RTCDebugMethod()
 {
 
- Serial.print(global_hour, DEC);
- 
-   byte loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year;
+
 
   //Retrieves time from 1307 every cycle 
-  getDateDs1307(loop_second, loop_minute, loop_hour, loop_dayOfWeek, loop_dayOfMonth, loop_month, loop_year);
-
+  getDateDs1307();
 
 
 
@@ -1202,8 +1285,8 @@ void RTCDebugMethod()
 	   Serial.print(global_dayOfMonth, DEC);
 	   Serial.print("/");
 	   Serial.print(global_year, DEC);
-	   Serial.print("  Day_of_week:");
-	   Serial.println(loop_dayOfWeek, DEC);
+
+
 	
 	delay(1000);
 
@@ -1223,4 +1306,3 @@ void touchDebugMethod()
    // Serial.println("left: " + leftCorner); // doesn't work as expected 
    // Serial.println(); 
 }
-
