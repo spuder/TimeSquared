@@ -5,4 +5,4 @@ Revision 2.0
 Complete rewrite of the software for Arduino IDE 1.0
 
 
-![Gui Window](https://github.com/spudstud/TimeSquared/raw/master/lib/timesquared.png)
+![Gui Window](https://github.com/spudstud/TimeSquared/raw/master/lib/timesquared1.png)
