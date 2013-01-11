@@ -1,3 +1,8 @@
-This is revision 0.9
+Time Squared is a home built clone of bigert & funks QlockTwo
+http://www.qlocktwo.com/?lang=en
 
-Time Squared is registered under the creative commons license
+Revision 2.0
+Complete rewrite of the software for Arduino IDE 1.0
+
+
+![Gui Window](https://github.com/spudstud/Snake/raw/master/lib/timesquared.png)
