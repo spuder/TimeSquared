@@ -9,6 +9,10 @@
  pin 11 is connected to the CLK 
  pin 10 is connected to LOAD 
  */
+ 
+ /**
+ ledControl(int dataPin, int clkPin, int csPin, int numDevices)
+ */
 LedControl ledDriver1=LedControl(5,6,7,1);
 LedControl ledDriver2=LedControl(9,3,4,1);
 
