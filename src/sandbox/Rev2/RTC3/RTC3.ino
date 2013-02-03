@@ -31,7 +31,7 @@ static char *dayname[] =
 void setup()
 {
   Wire.begin();
-  Serial.begin(9600);
+  Serial.begin(115200);
 
 #ifdef SETCLOCK
   char ans[1];
