@@ -62,6 +62,10 @@ void setup()
   You can query that time_t object with the function "now()"
   */
   setSyncProvider(RTC.get); 
+  if(timeStatus()!= timeSet) 
+     Serial.println("Unable to sync with the RTC");
+  else
+     Serial.println("RTC has set the system time");
  
  /*Attach interupt to wwvb module
    Everytime the status of pin 2 on the arduino changes, the callback is called
