@@ -120,7 +120,7 @@ void loop()
   
   //Comment out to hide time
   showTime();
-  //radioClock.diags();
+  radioClock.diags();
   //Comment out to hide the signal strength
   showCount();
   
@@ -138,6 +138,7 @@ void rightButtonCheck()
        if (rightButtonState == HIGH) {
             currentTimeZone++;
             radioClock.setTimeZoneOffset(currentTimeZone);
+            //setTime(( hour() + 1), minute(),second(),day(), month(), year());
             Serial.print("UTC " );
             Serial.println(currentTimeZone);
        }
@@ -154,6 +155,7 @@ void leftButtonCheck()
        if (leftButtonState == HIGH) {
             currentTimeZone--;
             radioClock.setTimeZoneOffset(currentTimeZone);
+            //setTime(( hour() - 1), minute(),second(),day(), month(), year());
             Serial.print("UTC " );
             Serial.println(currentTimeZone);
        }
