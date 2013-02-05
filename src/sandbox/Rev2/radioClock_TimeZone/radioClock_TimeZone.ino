@@ -1,4 +1,23 @@
 /*
+*************************************************************
+This code works, but has one big consideration. 
+The timezone offset is changable by two buttons on pins 4 and 5.
+Pressing the left button, decrements the UTC offset by 1, the right does the opposite
+
+The problem is that the time is not updated until the radio (wwvb,dc77) actually gets
+the time. This is problematic because it could take days for that to happen.
+
+Example, a person in MDT would push the left button 7 times, then wait
+several hours or days until the radio updates the clock before
+they would even notice the change. 
+
+A better approach might be to always save the time as UTC and compensate
+with a TimeZone Library like https://github.com/JChristensen/Timezone
+**************************************************************
+*/
+
+
+/*
 radioClock_timeZone is the same as radioClock_1, however it includes time zone support via 2 buttons. 
 
 This sketch polls and saves the radio time to/from a 1307 Real Time Clock Module. 
@@ -11,6 +30,9 @@ is updated at every opportunity instead of just once at startup.
   Arduino 1.0.3
   Arduino Mega 2560
   
+  Revision 1.1: (5 Febuary 2012)
+    Implemented Button library https://github.com/JChristensen/Button
+  
   Revision 1.0: (2 Feburary 2012)
     Polls 1307 on startup, and saves to 1307 on wireless update
     Checks buttons for time zone compensation
@@ -21,8 +43,9 @@ is updated at every opportunity instead of just once at startup.
 //They can not be nested inside other folders
 #include <Time.h>
 #include <TimeAlarms.h>
-#include <RadioClocks.h>
-#include <PrintTime.h>
+#include <RadioClocks.h> //http://code.google.com/p/radioclock/
+#include <PrintTime.h>   //http://code.google.com/p/radioclock/
+#include <Button.h>      //https://github.com/JChristensen/Button
 
 #include <Wire.h> //Library for i2c serial communicaiton
 #include <DS1307RTC.h> //basic 1307 ic library that gets and sets time_t objects
@@ -47,13 +70,14 @@ int  ledPositive = 8;
 int  ledGround   = 9;
 
 //Buttons to manually change timeZone
-const int  leftButton   = 4;
-const int  rightButton  = 5; 
-int previousLeftButtonState = 0;     // previous state of the button
-int previousRightButtonState = 0;
+#define leftButtonPin 4
+#define rightButtonPin 5
+
+Button leftButton(leftButtonPin, false, false, 20);    //Declare the button
+Button rightButton(rightButtonPin, false, false, 20);    //Declare the button
+
 
 int currentTimeZone = 0; //Offset for UTC
-
 
 
 void setup()
@@ -65,11 +89,6 @@ void setup()
   pinMode(ledGround, OUTPUT);
   digitalWrite(ledPositive, LOW);
   digitalWrite(ledGround, LOW);
-  
-  pinMode(rightButton, INPUT);
-  pinMode(leftButton, INPUT);
-  
-  
   
   /* 
   setSyncProvider tells the Time object where to pull its time from
@@ -124,44 +143,26 @@ void loop()
   //Comment out to hide the signal strength
   showCount();
   
-  rightButtonCheck();
-  leftButtonCheck();
-   
-}
-
-void rightButtonCheck() 
-{
-  int rightButtonState = digitalRead(rightButton);
-  
-   if (rightButtonState != previousRightButtonState) {
-    // if the state has changed, increment the counter
-       if (rightButtonState == HIGH) {
-            currentTimeZone++;
-            radioClock.setTimeZoneOffset(currentTimeZone);
-            //setTime(( hour() + 1), minute(),second(),day(), month(), year());
-            Serial.print("UTC " );
-            Serial.println(currentTimeZone);
-       }
-    } 
-    previousRightButtonState = rightButtonState;
-}
-
-void leftButtonCheck() 
-{
-  int leftButtonState = digitalRead(leftButton);
-  
-   if (leftButtonState != previousLeftButtonState) {
-    // if the state has changed, increment the counter
-       if (leftButtonState == HIGH) {
-            currentTimeZone--;
+  leftButton.read();
+  rightButton.read();
+  if (leftButton.wasReleased()) {
+    currentTimeZone--;
             radioClock.setTimeZoneOffset(currentTimeZone);
             //setTime(( hour() - 1), minute(),second(),day(), month(), year());
             Serial.print("UTC " );
             Serial.println(currentTimeZone);
-       }
-    } 
-    previousLeftButtonState = leftButtonState;
+  }
+  if (rightButton.wasReleased()) {
+    currentTimeZone++;
+            radioClock.setTimeZoneOffset(currentTimeZone);
+            //setTime(( hour() - 1), minute(),second(),day(), month(), year());
+            Serial.print("UTC " );
+            Serial.println(currentTimeZone);
+  }
+
+   
 }
+
 
 // update the internal time of the Time library
 void syncCallback(time_t syncedtime)
