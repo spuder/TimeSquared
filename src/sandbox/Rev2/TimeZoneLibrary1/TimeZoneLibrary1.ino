@@ -1,24 +1,38 @@
-/*----------------------------------------------------------------------*
- * Timezone library example sketch.                                     *
- * Self-adjusting clock for one time zone using an external real-time   *
- * clock, either a DS1307 or DS3231 (e.g. Chronodot).                   *
- * Assumes the RTC is set to UTC.                                       *
- * TimeChangeRules can be hard-coded or read from EEPROM, see comments. *
- * Check out the Chronodot at http://www.macetech.com/store/            *
- *                                                                      *
- * Jack Christensen Aug 2012                                            *
- *                                                                      *
- * This work is licensed under the Creative Commons Attribution-        *
- * ShareAlike 3.0 Unported License. To view a copy of this license,     *
- * visit http://creativecommons.org/licenses/by-sa/3.0/ or send a       *
- * letter to Creative Commons, 171 Second Street, Suite 300,            *
- * San Francisco, California, 94105, USA.                               *
- *----------------------------------------------------------------------*/
+/*---------------------------------------------------------------
+  TimeZone library example sketch
+  
+  This sketch now modifies the current time based on the number of 
+  times the buttons connected to pins 4 and 5 are pushed. 
+  
+  Revision 1.1 (4 Febuary 2013)
+  Spencer Owen
+  -Added button library
+  -added array of timezones
+  
+  
+  Origional TimeZone library example sketch
+  Jack Christensen Aug 2012                                            
+                                                                       
+  This work is licensed under the Creative Commons Attribution-        
+  ShareAlike 3.0 Unported License.
+  
+*/---------------------------------------------------------------
+
 
 #include <DS1307RTC.h>   //http://www.arduino.cc/playground/Code/Time
 #include <Time.h>        //http://www.arduino.cc/playground/Code/Time
 #include <Timezone.h>    //https://github.com/JChristensen/Timezone
 #include <Wire.h>        //http://arduino.cc/en/Reference/Wire (supplied with the Arduino IDE)
+#include <Button.h>      //https://github.com/JChristensen/Button
+
+
+#define leftButtonPin  4
+#define rightButtonPin 5
+Button leftButton(leftButtonPin, false, false, 25);
+Button rightButton(rightButtonPin, false, false, 25);
+
+float displayMillis = millis();
+
 
 //US Eastern Time Zone (New York, Detroit)
 TimeChangeRule EDT = {"EDT", Second, Sun, Mar, 2, -240};    //Daylight time = UTC - 4 hours
@@ -39,13 +53,19 @@ Timezone UTC(utcRule, utcRule);
 //Timezone myTZ(EDT, EST);
 //Timezone myTZ(MDT, MST);
 
-
-Timezone *timezones[] = { &Eastern, &Central, &Mountain, &Pacific, &UTC };
+time_t utc;
+time_t local;
+time_t lastUTC;
+time_t tSet;
+Timezone *timezones[] = { &Pacific, &Mountain, &Central, &Eastern, &UTC };
+char     *tzNames[]   = { "Pacific","Mountain","Central","Eastern","UTC"};
 Timezone *tz;               //pointer to the time zone
 uint8_t tzIndex;            //index to the timezones[] array (persisted in RTC SRAM)
-char *tzNames[] = { "Eastern", "Central", "Mountain", "Pacific", "UTC  " };
+//char *tzNames[] = {  "UTC  ","Eastern", "Central", "Mountain", "Pacific"};
+
+
 TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
-time_t utc, local, lastUTC, tSet;
+
 const uint8_t monthDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 tmElements_t tmSet;
 
@@ -65,18 +85,54 @@ void setup(void)
     if(timeStatus()!= timeSet) 
         Serial.println("Unable to sync with the RTC");
     else
-        Serial.println("RTC has set the system time");      
+        Serial.println("RTC has set the system time"); 
+   
+   tzIndex = 0; //set which timezone index of the array we want 0=PDT,1=MDT ect.. 
+   tz = timezones[tzIndex];
 }
 
 void loop(void)
 {
-    Serial.println();
-    utc = now();
-    printTime(utc, "UTC");
-    //local = myTZ.toLocal(utc, &tcr);
-    local = (*tz).toLocal(utc,&tcr);
-    printTime(local, tcr -> abbrev);
-    delay(10000);
+   rightButton.read();
+   leftButton.read();
+  
+   if ( leftButton.wasReleased() ) {
+
+            if (tzIndex > 0 ) { //c doesn't have array.length, had to hard code array length :(
+              tzIndex = tzIndex - 1;
+            }else {
+              Serial.println("Lowest in timeZone array is 0");
+            }
+            tz = timezones[tzIndex];
+            Serial.print("tzIndex = ");
+            Serial.println(tzIndex);
+
+
+   } 
+   if ( rightButton.wasReleased() ) {
+            if (tzIndex < 4 ) { //c doesn't have array.length, had to hard code array length :(
+              tzIndex = tzIndex + 1;
+            }else {
+              Serial.println("Highest in timeZone array is 3");
+            }
+            tz = timezones[tzIndex];
+            Serial.print("tzIndex = ");
+            Serial.println(tzIndex);
+   
+   }
+   //Display the time every second
+   //Don't use a delay() because we need to poll the buttons as fast as possible
+   if ( millis() - displayMillis > 1000 ) {
+      displayMillis = millis(); 
+      Serial.println();
+      utc = now();
+      printTime(utc, "UTC");
+      //local = myTZ.toLocal(utc, &tcr);
+      local = (*tz).toLocal(utc,&tcr);
+      printTime(local, tcr -> abbrev);
+   }
+   
+
 }
 
 //Function to print time with time zone
@@ -116,13 +172,3 @@ void sPrintDigits(int val)
     Serial.print(val, DEC);
 }
 
-/*
-
-        case SET_TZ:
-            STATE = SET_CALIB;
-            tzIndex = setVal("Timezone: ", tzIndex, 0, sizeof(tzNames)/sizeof(tzNames[0]) - 1, 0);
-            if (STATE == RUN) break;
-            tz = timezones[tzIndex];
-            RTC.sramWrite(TZ_INDEX_ADDR, tzIndex);    //save it
-            break;
-*/
