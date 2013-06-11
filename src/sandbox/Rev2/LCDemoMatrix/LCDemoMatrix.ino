@@ -13,8 +13,8 @@
  /**
  ledControl(int dataPin, int clkPin, int csPin, int numDevices)
  */
-LedControl ledDriver1=LedControl(5,6,7,1);
-LedControl ledDriver2=LedControl(9,3,4,1);
+LedControl ledDriver1=LedControl(10,13,12,1);
+LedControl ledDriver2=LedControl(6,8,7,1);
 
 /* we always wait a bit between updates of the display */
 unsigned long delaytime=100;
@@ -36,6 +36,8 @@ void setup() {
   ledDriver1.clearDisplay(0);
   ledDriver2.clearDisplay(0);
   
+  Serial.begin(115200);
+  Serial.println("Starting LCDemoMatrix");
   
   for (int row=0; row<8; row++)
   {
